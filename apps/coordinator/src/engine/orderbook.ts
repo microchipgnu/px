@@ -6,6 +6,7 @@ import type {
 	SellOrder,
 	Settlement,
 } from "@payload-exchange/protocol"
+import { openDatabase, SQLiteMap } from "../db"
 
 export type Assignment = {
 	id: string
@@ -18,12 +19,22 @@ export type Assignment = {
 }
 
 export class Orderbook {
-	buyOrders = new Map<string, BuyOrder>()
-	sellOrders = new Map<string, SellOrder>()
-	assignments = new Map<string, Assignment>() // keyed by buy order ID
-	fulfillments = new Map<string, Fulfillment>() // keyed by buy order ID
-	attestations = new Map<string, Attestation>() // keyed by buy order ID
-	settlements = new Map<string, Settlement>() // keyed by buy order ID
+	buyOrders: SQLiteMap<BuyOrder>
+	sellOrders: SQLiteMap<SellOrder>
+	assignments: SQLiteMap<Assignment> // keyed by buy order ID
+	fulfillments: SQLiteMap<Fulfillment> // keyed by buy order ID
+	attestations: SQLiteMap<Attestation> // keyed by buy order ID
+	settlements: SQLiteMap<Settlement> // keyed by buy order ID
+
+	constructor() {
+		const db = openDatabase()
+		this.buyOrders = new SQLiteMap<BuyOrder>(db, "buy_orders")
+		this.sellOrders = new SQLiteMap<SellOrder>(db, "sell_orders")
+		this.assignments = new SQLiteMap<Assignment>(db, "assignments")
+		this.fulfillments = new SQLiteMap<Fulfillment>(db, "fulfillments")
+		this.attestations = new SQLiteMap<Attestation>(db, "attestations")
+		this.settlements = new SQLiteMap<Settlement>(db, "settlements")
+	}
 
 	addBuyOrder(order: BuyOrder): void {
 		this.buyOrders.set(order.id, order)
