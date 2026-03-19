@@ -46,8 +46,7 @@ app.get("/api/health", (c) =>
 
 const STATIC_DIR = resolve(import.meta.dir, "../public")
 
-// Serve skill guide as HTML at both /skill and /skill.md
-app.get("/skill.md", (c) => c.redirect("/skill.html", 301))
+// Serve skill guide
 app.get("/skill", (c) => c.redirect("/skill.html", 301))
 
 if (existsSync(STATIC_DIR)) {
