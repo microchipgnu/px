@@ -33,6 +33,24 @@ const TASK_LABELS: Record<string, string> = {
 	smart_contract: "CONTRACT",
 }
 
+function isTestnet(): boolean {
+	const host = window.location.host
+	return host.includes("px-test") || host.includes("localhost")
+}
+
+function txExplorerUrl(txHash: string): string | null {
+	// Only link real tx hashes (not placeholders like "tx:abc123")
+	if (txHash.startsWith("tx:")) return null
+	const base = isTestnet() ? "https://explore.moderato.tempo.xyz" : "https://explore.tempo.xyz"
+	return `${base}/tx/${txHash}`
+}
+
+function truncateTxHash(hash: string): string {
+	if (hash.startsWith("tx:")) return hash
+	if (hash.length <= 16) return hash
+	return `${hash.slice(0, 10)}…${hash.slice(-6)}`
+}
+
 export function ActivityFeed({ events }: Props) {
 	const [open, setOpen] = useState(false)
 
@@ -90,12 +108,15 @@ function ActivityRow({ event, isNew }: { event: ActivityEvent; isNew: boolean })
 				{event.seller && (
 					<span className="text-foreground">{truncateAddress(event.seller)}</span>
 				)}
-				{event.intent && (
+				{event.txHash && (
+					<TxHashLink txHash={event.txHash} />
+				)}
+				{event.intent && !event.txHash && (
 					<span className="text-muted-foreground ml-1.5 hidden sm:inline">
 						{event.intent.length > 45 ? `${event.intent.slice(0, 45)}…` : event.intent}
 					</span>
 				)}
-				{!event.intent && event.detail && (
+				{!event.intent && !event.txHash && event.detail && (
 					<span className="text-muted-foreground ml-1.5 hidden sm:inline">
 						{event.detail.length > 45 ? `${event.detail.slice(0, 45)}…` : event.detail}
 					</span>
@@ -110,5 +131,29 @@ function ActivityRow({ event, isNew }: { event: ActivityEvent; isNew: boolean })
 				{event.taskClass ? TASK_LABELS[event.taskClass] ?? event.taskClass : ""}
 			</span>
 		</div>
+	)
+}
+
+function TxHashLink({ txHash }: { txHash: string }) {
+	const url = txExplorerUrl(txHash)
+
+	if (url) {
+		return (
+			<a
+				href={url}
+				target="_blank"
+				rel="noopener noreferrer"
+				className="ml-1.5 text-accent hover:text-accent/80 underline underline-offset-2 decoration-accent/40 hidden sm:inline"
+				title={txHash}
+			>
+				{truncateTxHash(txHash)}
+			</a>
+		)
+	}
+
+	return (
+		<span className="ml-1.5 text-muted-foreground hidden sm:inline" title={txHash}>
+			{truncateTxHash(txHash)}
+		</span>
 	)
 }

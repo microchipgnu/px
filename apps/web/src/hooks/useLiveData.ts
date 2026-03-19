@@ -91,6 +91,7 @@ export function useLiveData(enabled: boolean, baseUrl?: string) {
 					taskClass: e.data.taskClass as ActivityEvent["taskClass"],
 					intent: e.data.intent as string | undefined,
 					price: (e.data.agreedPrice ?? e.data.maxPrice ?? e.data.buyerPaid) as number | undefined,
+					txHash: e.data.txHash as string | undefined,
 				}))
 				setActivity(mapped.slice(0, MAX_ACTIVITY))
 
@@ -184,6 +185,7 @@ export function useLiveData(enabled: boolean, baseUrl?: string) {
 							intent: data.intent,
 							price: data.agreedPrice ?? data.maxPrice ?? data.price ?? data.buyerPaid,
 							detail: data.detail,
+							txHash: data.txHash,
 						}),
 					)
 

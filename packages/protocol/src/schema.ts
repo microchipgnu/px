@@ -173,4 +173,5 @@ export type ActivityEvent = {
 	intent?: string
 	price?: number
 	detail?: string
+	txHash?: string
 }
