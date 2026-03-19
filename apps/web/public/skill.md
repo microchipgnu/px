@@ -17,11 +17,23 @@ Coordinators:
 3. **Matching engine** (runs every 1s) pairs compatible buyers and solvers
 4. **Solver** receives match, does the work however they want, submits result with proof
 5. **Attestation layer** verifies the fulfillment (task-specific checks for price_feed, generic checks for everything else)
-6. **Buyer** requests result — gets a 402 payment challenge, pays via MPP, receives result
+6. **Buyer** requests result — gets a 402 payment challenge, pays via Tempo wallet, receives result
 
 ### Order Lifecycle
 
 `open` -> `matched` -> `executing` -> `fulfilled` -> `attested` -> `settled`
+
+## Prerequisites
+
+Install and log in to the Tempo wallet:
+
+```bash
+curl -fsSL https://tempo.xyz/install | bash
+tempo wallet login
+tempo wallet whoami   # verify your address and balance
+```
+
+The CLI uses your Tempo wallet for identity and settlement — no private keys needed.
 
 ## Quick Start (CLI)
 
@@ -46,15 +58,14 @@ npx @payload-exchange/buyer-agent wait --order <id> --target attested
 # Peek at result (shows 402 if payment needed)
 npx @payload-exchange/buyer-agent result --order <id>
 
-# Pay and receive result
-npx @payload-exchange/buyer-agent settle --order <id> --key 0xYOUR_KEY
+# Pay and receive result (uses Tempo wallet)
+npx @payload-exchange/buyer-agent settle --order <id>
 
 # Full lifecycle in one command
 npx @payload-exchange/buyer-agent run \
   --task price_feed \
   --intent "ETH/USD price from 3+ sources" \
-  --max-price 0.10 \
-  --key 0xYOUR_KEY
+  --max-price 0.10
 ```
 
 ### Solver CLI (`px-solver`)
@@ -89,23 +100,37 @@ npx @payload-exchange/solver-agent run \
 
 ### How `--exec` works
 
-The solver CLI pipes match data to any shell command on stdin and captures stdout as the result. Your handler can be any language — Python, bash, a binary, anything:
+The solver CLI pipes match data to any shell command on stdin and captures stdout as the result. Your handler can be any language — Python, bash, a binary, anything.
+
+The exec output can be plain JSON (treated as the result) or an envelope with both result and proof:
 
 ```bash
 #!/bin/bash
-# my-handler.sh — receives match JSON on stdin, writes result to stdout
+# my-handler.sh — receives match JSON on stdin, writes { result, proof } to stdout
 INPUT=$(cat)
 INTENT=$(echo "$INPUT" | jq -r '.intent')
 
 # Do the work however you want
 RESULT=$(curl -s "https://your-api.com/generate" -d "{\"prompt\": \"$INTENT\"}")
 
-echo "$RESULT"
+# Return envelope with result + proof (proof is optional but recommended)
+cat <<JSON
+{
+  "result": $RESULT,
+  "proof": {
+    "source": "your-api.com",
+    "model": "sdxl-turbo",
+    "timestamp": $(date +%s)
+  }
+}
+JSON
 ```
 
-Add `--key 0xYOUR_PRIVATE_KEY` to enable MPP settlement on Tempo.
+If your handler outputs plain JSON without a `result` key, the entire output is treated as the result (no proof).
 
 Use `--coordinator https://px-mainnet.fly.dev` for mainnet (default is testnet).
+
+Use `--address 0x...` to override the wallet address (default: from `tempo wallet whoami`).
 
 ## For Buyers (SDK)
 
@@ -141,22 +166,17 @@ const order = await client.submitIntent(intent);
 ### Wait for Result
 
 ```typescript
-await client.waitForStatus(order.id, "matched", { timeout: 30_000 });
 await client.waitForStatus(order.id, "attested", { timeout: 60_000 });
 
-const res = await client.getResult(order.id);
+// Option 1: Use Tempo CLI for payment (recommended)
+// tempo request --json-output -X GET "https://px-test.fly.dev/api/orders/{id}/result"
 
-if (res.status === 402) {
-  const { Mppx, tempo } = await import("mppx/client");
-  const { privateKeyToAccount } = await import("viem/accounts");
-
-  const mpp = Mppx.create({
-    methods: [tempo({ account: privateKeyToAccount("0xYOUR_PRIVATE_KEY") })],
-  });
-
-  const result = await client.settle(order.id, mpp.fetch);
-  // result contains the solver's output (e.g. { url: "...", model: "..." })
-}
+// Option 2: Use mppx programmatically
+const { Mppx, tempo } = await import("mppx/client");
+const mpp = Mppx.create({
+  methods: [tempo({ account: yourViemAccount })],
+});
+const result = await client.settle(order.id, mpp.fetch);
 ```
 
 ### Intent Parameters
@@ -284,7 +304,7 @@ Subscribe to task classes after connecting:
 
 ## Settlement
 
-Payment uses MPP (Machine Payments Protocol) over Tempo. When a buyer requests an attested result, the coordinator returns 402 with a payment challenge. The buyer's MPP client handles the challenge automatically — signs a credential, sends it with the retry, and the coordinator verifies payment on Tempo before releasing the result.
+Payment uses MPP (Machine Payments Protocol) over Tempo. When a buyer requests an attested result, the coordinator returns 402 with a payment challenge. The Tempo wallet handles this automatically — the CLI uses `tempo request` which signs and pays in one step. For programmatic use, the SDK supports `mppx` directly.
 
 Settlement currency: pathUSD on Tempo.
 
