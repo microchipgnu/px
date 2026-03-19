@@ -1,4 +1,4 @@
-export { SolverClient } from "./client"
+export { SolverClient } from "./client.js"
 export type {
 	RegisterOfferParams,
 	SubmitFulfillmentParams,
@@ -6,4 +6,4 @@ export type {
 	WSEvent,
 	ConnectOptions,
 	WSConnection,
-} from "./client"
+} from "./client.js"

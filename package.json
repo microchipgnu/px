@@ -11,7 +11,10 @@
     "format": "biome format --write .",
     "typecheck": "turbo typecheck",
     "clean": "turbo clean",
-    "test": "bun test --recursive"
+    "test": "bun test --recursive",
+    "deploy:test": "fly deploy -c fly.testnet.toml",
+    "deploy:main": "fly deploy -c fly.mainnet.toml",
+    "publish:all": "turbo build && npm publish --workspace=packages/protocol && npm publish --workspace=packages/buyer-sdk && npm publish --workspace=packages/solver-sdk && npm publish --workspace=apps/buyer-agent && npm publish --workspace=apps/solver-agent"
   },
   "devDependencies": {
     "@biomejs/biome": "^1.9.0",

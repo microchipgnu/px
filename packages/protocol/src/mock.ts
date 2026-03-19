@@ -1,4 +1,4 @@
-import type { BuyOrder, SellOrder, TaskClass, PricingModel } from "./schema"
+import type { BuyOrder, SellOrder, TaskClass, PricingModel } from "./schema.js"
 
 const now = () => Math.floor(Date.now() / 1000)
 const uuid = () => crypto.randomUUID()

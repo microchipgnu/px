@@ -38,6 +38,8 @@ app.get("/api/activity", (c) => {
 app.get("/api/health", (c) =>
 	c.json({
 		status: "ok",
+		network: process.env.PX_NETWORK ?? "testnet",
+		testnet: TESTNET,
 		connections: getConnectionCount(),
 		buyOrders: orderbook.buyOrders.size,
 		sellOrders: orderbook.sellOrders.size,

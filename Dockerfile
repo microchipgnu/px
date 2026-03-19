@@ -20,7 +20,12 @@ RUN bun install --frozen-lockfile
 COPY . .
 
 # Build web app and place in coordinator's public dir
-RUN cd apps/web && bun run build
+ARG VITE_TESTNET_URL=https://px-test.fly.dev
+ARG VITE_MAINNET_URL=https://px-mainnet.fly.dev
+RUN cd apps/web && \
+    VITE_TESTNET_URL=$VITE_TESTNET_URL \
+    VITE_MAINNET_URL=$VITE_MAINNET_URL \
+    bun run build
 RUN cp -r apps/web/dist apps/coordinator/public
 
 EXPOSE 4000

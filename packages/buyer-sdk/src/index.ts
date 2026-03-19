@@ -1,3 +1,3 @@
-export { BuyerClient } from "./client"
-export type { SubmitIntentParams, OrderStatusResponse, WaitForStatusOptions } from "./client"
-export { createIntent } from "./intent"
+export { BuyerClient } from "./client.js"
+export type { SubmitIntentParams, OrderStatusResponse, WaitForStatusOptions } from "./client.js"
+export { createIntent } from "./intent.js"

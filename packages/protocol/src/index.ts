@@ -11,13 +11,13 @@ export {
 	Settlement,
 	PricingModel,
 	ActivityEventType,
-} from "./schema"
+} from "./schema.js"
 
-export type { ActivityEvent } from "./schema"
+export type { ActivityEvent } from "./schema.js"
 
 export {
 	generateBuyOrder,
 	generateSellOrder,
 	generateInitialBuyOrders,
 	generateInitialSellOrders,
-} from "./mock"
+} from "./mock.js"

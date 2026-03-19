@@ -1,12 +1,9 @@
-# fly.toml app configuration file generated for payload-exchange on 2026-03-19T19:13:56Z
-#
-# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
-#
-
-app = 'payload-exchange'
+app = 'px-test'
 primary_region = 'cdg'
 
-[build]
+[build.args]
+  VITE_TESTNET_URL = "https://px-test.fly.dev"
+  VITE_MAINNET_URL = "https://px-mainnet.fly.dev"
 
 [http_service]
   internal_port = 4000
@@ -19,9 +16,11 @@ primary_region = 'cdg'
 
 [env]
   DB_PATH = "/data/px.db"
+  TEMPO_TESTNET = "true"
+  PX_NETWORK = "testnet"
 
 [mounts]
-  source = "px_data"
+  source = "px_test_data"
   destination = "/data"
 
 [[vm]]

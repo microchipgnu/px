@@ -10,9 +10,28 @@ import type { MatchedPair, MatchTick } from "./useSimulation"
 const MAX_ACTIVITY = 50
 const POLL_INTERVAL = 3000
 
-function wsUrl(): string {
-	const proto = window.location.protocol === "https:" ? "wss:" : "ws:"
-	return `${proto}//${window.location.host}/ws`
+function httpUrl(baseUrl: string | undefined, path: string): string {
+	if (!baseUrl || isSameOrigin(baseUrl)) return path
+	return `${baseUrl.replace(/\/$/, "")}${path}`
+}
+
+function wsUrl(baseUrl?: string): string {
+	if (!baseUrl || isSameOrigin(baseUrl)) {
+		const proto = window.location.protocol === "https:" ? "wss:" : "ws:"
+		return `${proto}//${window.location.host}/ws`
+	}
+	const url = new URL(baseUrl)
+	const proto = url.protocol === "https:" ? "wss:" : "ws:"
+	return `${proto}//${url.host}/ws`
+}
+
+function isSameOrigin(baseUrl: string): boolean {
+	try {
+		const url = new URL(baseUrl)
+		return url.host === window.location.host
+	} catch {
+		return true
+	}
 }
 
 function makeEvent(
@@ -32,7 +51,7 @@ type Assignment = {
 	createdAt: number
 }
 
-export function useLiveData(enabled: boolean) {
+export function useLiveData(enabled: boolean, baseUrl?: string) {
 	const [buyOrders, setBuyOrders] = useState<BuyOrder[]>([])
 	const [sellOrders, setSellOrders] = useState<SellOrder[]>([])
 	const [activity, setActivity] = useState<ActivityEvent[]>([])
@@ -52,7 +71,7 @@ export function useLiveData(enabled: boolean) {
 
 		const loadHistory = async () => {
 			try {
-				const res = await fetch("/api/activity")
+				const res = await fetch(httpUrl(baseUrl, "/api/activity"))
 				if (!res.ok) return
 				const events = (await res.json()) as Array<{
 					id: string
@@ -92,7 +111,7 @@ export function useLiveData(enabled: boolean) {
 		}
 
 		loadHistory()
-	}, [enabled])
+	}, [enabled, baseUrl])
 
 	// Poll orderbook snapshot
 	useEffect(() => {
@@ -100,7 +119,7 @@ export function useLiveData(enabled: boolean) {
 
 		const poll = async () => {
 			try {
-				const res = await fetch("/api/orders")
+				const res = await fetch(httpUrl(baseUrl, "/api/orders"))
 				if (!res.ok) return
 				const data = await res.json()
 				setBuyOrders(data.buyOrders ?? [])
@@ -139,7 +158,7 @@ export function useLiveData(enabled: boolean) {
 		poll()
 		const interval = setInterval(poll, POLL_INTERVAL)
 		return () => clearInterval(interval)
-	}, [enabled])
+	}, [enabled, baseUrl])
 
 	// WebSocket for real-time activity events
 	useEffect(() => {
@@ -148,7 +167,7 @@ export function useLiveData(enabled: boolean) {
 		let reconnectTimer: ReturnType<typeof setTimeout>
 
 		const connect = () => {
-			const ws = new WebSocket(wsUrl())
+			const ws = new WebSocket(wsUrl(baseUrl))
 			wsRef.current = ws
 
 			ws.onmessage = (e) => {
@@ -191,7 +210,7 @@ export function useLiveData(enabled: boolean) {
 			wsRef.current?.close()
 			wsRef.current = null
 		}
-	}, [enabled, pushActivity])
+	}, [enabled, baseUrl, pushActivity])
 
 	// Clear on disable
 	useEffect(() => {
