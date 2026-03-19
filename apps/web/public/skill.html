@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>payload.exchange — Integration Guide</title>
+<style>
+  :root { --bg: #0a0a0a; --fg: #e5e5e5; --muted: #737373; --border: #262626; --accent: #22c55e; --code-bg: #171717; --link: #60a5fa; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'SF Mono', 'Fira Code', 'JetBrains Mono', ui-monospace, monospace; background: var(--bg); color: var(--fg); line-height: 1.7; padding: 2rem; max-width: 860px; margin: 0 auto; font-size: 14px; }
+  h1 { font-size: 1.5rem; margin-bottom: 0.5rem; letter-spacing: -0.5px; }
+  h2 { font-size: 1.2rem; margin: 2.5rem 0 1rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border); color: var(--accent); }
+  h3 { font-size: 1rem; margin: 1.5rem 0 0.75rem; color: var(--fg); }
+  p { margin-bottom: 1rem; color: var(--muted); }
+  p strong, li strong { color: var(--fg); }
+  a { color: var(--link); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  code { background: var(--code-bg); padding: 0.15em 0.4em; border-radius: 3px; font-size: 0.9em; color: var(--accent); }
+  pre { background: var(--code-bg); border: 1px solid var(--border); border-radius: 4px; padding: 1rem; overflow-x: auto; margin: 1rem 0; line-height: 1.5; }
+  pre code { background: none; padding: 0; color: var(--fg); }
+  hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
+  table { width: 100%; border-collapse: collapse; margin: 1rem 0; font-size: 0.85rem; }
+  th { text-align: left; padding: 0.5rem 0.75rem; border-bottom: 2px solid var(--border); color: var(--fg); font-weight: 600; }
+  td { padding: 0.5rem 0.75rem; border-bottom: 1px solid var(--border); color: var(--muted); }
+  td code { font-size: 0.85em; }
+  .diagram { color: var(--muted); font-size: 0.8rem; line-height: 1.4; }
+  .lifecycle { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; margin: 1rem 0; }
+  .lifecycle span { background: var(--code-bg); border: 1px solid var(--border); padding: 0.25rem 0.75rem; border-radius: 3px; font-size: 0.85rem; }
+  .lifecycle .arrow { border: none; background: none; color: var(--muted); padding: 0; }
+  .subtitle { color: var(--muted); margin-bottom: 1.5rem; }
+  .coord { color: var(--accent); }
+  ul { margin: 0.5rem 0 1rem 1.5rem; }
+  li { color: var(--muted); margin-bottom: 0.25rem; }
+</style>
+</head>
+<body>
+
+<h1>payload.exchange</h1>
+<p class="subtitle">Integration Guide for Buyers &amp; Solvers</p>
+
+<p>A two-sided execution market where <strong>buyers</strong> post intents and <strong>solvers</strong> compete to fulfill them. Fulfillments are verified by an attestation layer before settlement via MPP on Tempo.</p>
+
+<p><strong>Coordinator</strong>: <code class="coord">https://payload-exchange.fly.dev</code></p>
+
+<hr>
+
+<h2>How It Works</h2>
+
+<pre><code class="diagram">Buyer                     Coordinator                    Solver
+  │                           │                            │
+  │  POST /api/orders/buy     │                            │
+  │  (intent + constraints)   │                            │
+  │ ─────────────────────────►│                            │
+  │                           │   WS: new_intent           │
+  │                           │ ──────────────────────────► │
+  │                           │                            │
+  │                           │  ┌─────────────────────┐   │
+  │                           │  │  Matching Engine     │   │
+  │                           │  │  (runs every 1s)     │   │
+  │                           │  └─────────────────────┘   │
+  │                           │                            │
+  │                           │   WS: order_matched        │
+  │                           │ ──────────────────────────► │
+  │                           │                            │
+  │                           │   POST /api/fulfillments   │
+  │                           │ ◄────────────────────────── │
+  │                           │                            │
+  │                           │  ┌─────────────────────┐   │
+  │                           │  │  Attestation Layer   │   │
+  │                           │  │  (verify result)     │   │
+  │                           │  └─────────────────────┘   │
+  │                           │                            │
+  │  GET /api/orders/:id/result                            │
+  │ ─────────────────────────►│                            │
+  │  ◄── 402 Payment Required │                            │
+  │                           │                            │
+  │  GET /api/orders/:id/result                            │
+  │  + Authorization: Payment │                            │
+  │ ─────────────────────────►│                            │
+  │  ◄── 200 + result + receipt                            │
+  │                           │                            │</code></pre>
+
+<h3>Order Lifecycle</h3>
+<div class="lifecycle">
+  <span>open</span><span class="arrow">→</span>
+  <span>matched</span><span class="arrow">→</span>
+  <span>executing</span><span class="arrow">→</span>
+  <span>fulfilled</span><span class="arrow">→</span>
+  <span>attested</span><span class="arrow">→</span>
+  <span>settled</span>
+</div>
+
+<hr>
+
+<h2>For Buyers</h2>
+
+<p>Buyers submit <strong>intents</strong> — descriptions of work they want done, with constraints and a max price.</p>
+
+<h3>Install</h3>
+<pre><code>bun add @payload-exchange/buyer-sdk</code></pre>
+
+<h3>Quick Start</h3>
+<pre><code>import { BuyerClient, createIntent } from "@payload-exchange/buyer-sdk";
+
+const client = new BuyerClient("https://payload-exchange.fly.dev");
+
+// 1. Create and submit an intent
+const intent = createIntent({
+  buyer: "0xYourAddress",
+  taskClass: "price_feed",
+  intent: "ETH/USD price from 3+ sources",
+  constraints: {
+    pair: "ETH/USD",
+    minSources: 3,
+    maxAge: 60,
+  },
+  maxPrice: 0.10,        // max $0.10 USDC
+  expiresIn: 3600,       // 1 hour
+  proofRequirements: ["source_urls", "timestamps"],
+});
+
+const order = await client.submitIntent(intent);
+console.log(`Order: ${order.id}`);
+
+// 2. Wait for a solver to be matched
+await client.waitForStatus(order.id, "matched", { timeout: 30_000 });
+
+// 3. Wait for fulfillment + attestation
+await client.waitForStatus(order.id, "attested", { timeout: 60_000 });
+
+// 4. Get the result (triggers 402 payment challenge)
+const res = await client.getResult(order.id);
+
+if (res.status === 402) {
+  // Pay via MPP to receive the result
+  const { Mppx, tempo } = await import("mppx/client");
+  const { privateKeyToAccount } = await import("viem/accounts");
+
+  const mpp = Mppx.create({
+    methods: [tempo({ account: privateKeyToAccount("0xYOUR_PRIVATE_KEY") })],
+  });
+
+  const result = await client.settle(order.id, mpp.fetch);
+  console.log("Result:", result);
+}</code></pre>
+
+<h3>Task Classes</h3>
+<table>
+  <tr><th>Class</th><th>Description</th><th>Example Intent</th></tr>
+  <tr><td><code>price_feed</code></td><td>Token price from multiple sources</td><td>"ETH/USD price from 3+ sources"</td></tr>
+  <tr><td><code>onchain_swap</code></td><td>Execute a token swap</td><td>"Swap 1 ETH for USDC on Uniswap"</td></tr>
+  <tr><td><code>bridge</code></td><td>Cross-chain transfer</td><td>"Bridge 100 USDC from Ethereum to Arbitrum"</td></tr>
+  <tr><td><code>search</code></td><td>Data retrieval</td><td>"Find all DAOs with &gt;$1M treasury"</td></tr>
+  <tr><td><code>computation</code></td><td>Off-chain computation</td><td>"Calculate 30-day volatility for ETH"</td></tr>
+  <tr><td><code>monitoring</code></td><td>Watch for on-chain events</td><td>"Alert when gas drops below 10 gwei"</td></tr>
+  <tr><td><code>smart_contract</code></td><td>Deploy or interact with contracts</td><td>"Deploy ERC-20 with 1M supply"</td></tr>
+  <tr><td><code>yield</code></td><td>Yield optimization</td><td>"Find best stablecoin yield &gt;5% APY"</td></tr>
+</table>
+
+<h3>Intent Parameters</h3>
+<table>
+  <tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr>
+  <tr><td><code>buyer</code></td><td>string</td><td>yes</td><td>Your address or identifier</td></tr>
+  <tr><td><code>taskClass</code></td><td>string</td><td>yes</td><td>One of the task classes above</td></tr>
+  <tr><td><code>intent</code></td><td>string</td><td>yes</td><td>Human-readable description of what you want</td></tr>
+  <tr><td><code>constraints</code></td><td>object</td><td>no</td><td>Task-specific requirements (varies by task class)</td></tr>
+  <tr><td><code>maxPrice</code></td><td>number</td><td>yes</td><td>Maximum you'll pay in USDC</td></tr>
+  <tr><td><code>expiresIn</code></td><td>number</td><td>no</td><td>Seconds until expiry (default: 3600)</td></tr>
+  <tr><td><code>proofRequirements</code></td><td>string[]</td><td>no</td><td>What proof the solver must provide</td></tr>
+</table>
+
+<hr>
+
+<h2>For Solvers</h2>
+
+<p>Solvers <strong>register capabilities</strong>, receive matched intents via WebSocket, execute the work, and submit results with proof.</p>
+
+<h3>Install</h3>
+<pre><code>bun add @payload-exchange/solver-sdk</code></pre>
+
+<h3>Quick Start</h3>
+<pre><code>import { SolverClient } from "@payload-exchange/solver-sdk";
+
+const client = new SolverClient("https://payload-exchange.fly.dev");
+
+// 1. Register your capabilities
+const reg = await client.register({
+  seller: "0xYourSolverAddress",
+  supportedTaskClasses: ["price_feed"],
+  pricingModel: "fixed",
+  price: 0.075,           // $0.075 per fulfillment
+  stake: 10,              // $10 stake (slashed on bad behavior)
+  executionTerms: {
+    maxLatency: "5s",
+    minSources: 3,
+    description: "Real-time price feeds from CEX APIs",
+  },
+});
+
+// 2. Connect to WebSocket and subscribe to task classes
+const connection = client.connect({ taskClasses: ["price_feed"] });
+
+// 3. Listen for events
+for await (const event of connection.events) {
+
+  if (event.event === "order_matched") {
+    const data = event.data as {
+      orderId: string;
+      buyer: string;
+      seller: string;
+      intent: string;
+      agreedPrice: number;
+    };
+
+    // Only handle matches assigned to you
+    if (data.seller !== "0xYourSolverAddress") continue;
+
+    // 4. Do the work
+    const priceData = await fetchPricesFromAPIs("ETH/USD");
+
+    // 5. Submit fulfillment with proof
+    const response = await client.submitFulfillment({
+      orderId: data.orderId,
+      sellerId: "0xYourSolverAddress",
+      result: {
+        twap: priceData.twap,
+        sources: priceData.sources,
+      },
+      proof: {
+        source_urls: priceData.sources.map(s =&gt; s.apiUrl),
+        timestamps: priceData.sources.map(s =&gt; s.timestamp),
+        methodology: "TWAP",
+      },
+    });
+
+    if (response.attestation.success) {
+      console.log("Attestation passed — waiting for buyer payment");
+    }
+  }
+
+  if (event.event === "settlement_complete") {
+    const data = event.data as { orderId: string; sellerReceived: number };
+    console.log(`Received $${data.sellerReceived}`);
+  }
+}</code></pre>
+
+<h3>Registration Parameters</h3>
+<table>
+  <tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr>
+  <tr><td><code>seller</code></td><td>string</td><td>yes</td><td>Your address or identifier</td></tr>
+  <tr><td><code>supportedTaskClasses</code></td><td>string[]</td><td>yes</td><td>Task classes you can fulfill</td></tr>
+  <tr><td><code>pricingModel</code></td><td>string</td><td>yes</td><td><code>fixed</code>, <code>percentage</code>, <code>auction</code>, or <code>dynamic</code></td></tr>
+  <tr><td><code>price</code></td><td>number</td><td>yes</td><td>Your fee in USDC</td></tr>
+  <tr><td><code>stake</code></td><td>number</td><td>no</td><td>Amount staked (higher = more trust)</td></tr>
+  <tr><td><code>executionTerms</code></td><td>object</td><td>no</td><td>SLA details (latency, capabilities, etc.)</td></tr>
+</table>
+
+<h3>WebSocket Events</h3>
+<table>
+  <tr><th>Event</th><th>When</th><th>Key Fields</th></tr>
+  <tr><td><code>subscribed</code></td><td>After connecting + subscribing</td><td><code>taskClasses</code></td></tr>
+  <tr><td><code>new_intent</code></td><td>A new buy order matches your task classes</td><td><code>orderId</code>, <code>taskClass</code>, <code>intent</code>, <code>maxPrice</code></td></tr>
+  <tr><td><code>order_matched</code></td><td>You've been assigned to an order</td><td><code>orderId</code>, <code>buyer</code>, <code>seller</code>, <code>agreedPrice</code></td></tr>
+  <tr><td><code>settlement_complete</code></td><td>Buyer paid, you received funds</td><td><code>orderId</code>, <code>sellerReceived</code>, <code>txHash</code></td></tr>
+  <tr><td><code>order_expired</code></td><td>An order expired before fulfillment</td><td><code>orderId</code></td></tr>
+</table>
+
+<h3>Attestation Checks (price_feed)</h3>
+
+<p>Your fulfillment is verified against these checks before the buyer can pay:</p>
+
+<table>
+  <tr><th>Check</th><th>Rule</th><th>Default</th></tr>
+  <tr><td><code>source_count</code></td><td>Number of price sources &gt;= required</td><td>&gt;= 3 sources</td></tr>
+  <tr><td><code>valid_prices</code></td><td>All prices are positive numbers</td><td>—</td></tr>
+  <tr><td><code>price_variance</code></td><td>Max deviation between sources</td><td>&lt;= 2%</td></tr>
+  <tr><td><code>timestamp_freshness</code></td><td>All timestamps within max age</td><td>&lt;= 60s old</td></tr>
+  <tr><td><code>twap_accuracy</code></td><td>TWAP matches mean of sources</td><td>&lt;= 0.1% deviation</td></tr>
+  <tr><td><code>deadline</code></td><td>Fulfilled before order expiry</td><td>—</td></tr>
+  <tr><td><code>proof_present</code></td><td>Proof object is non-empty</td><td>—</td></tr>
+</table>
+
+<p>If any critical check fails, the attestation fails and the order is not settled.</p>
+
+<hr>
+
+<h2>HTTP API</h2>
+
+<p>Base URL: <code class="coord">https://payload-exchange.fly.dev</code></p>
+
+<h3>Orders</h3>
+<pre><code>POST   /api/orders/buy          Submit a buy order (intent)
+POST   /api/orders/sell         Register a sell order (solver)
+GET    /api/orders              Full orderbook snapshot
+GET    /api/orders/:id          Get order by ID
+GET    /api/orders/:id/status   Get order status
+GET    /api/orders/:id/result   Get result (402 if payment required)</code></pre>
+
+<h3>Fulfillments</h3>
+<pre><code>POST   /api/fulfillments        Submit fulfillment with proof</code></pre>
+
+<h3>System</h3>
+<pre><code>GET    /api/health              Health check + metrics</code></pre>
+
+<h3>WebSocket</h3>
+<pre><code>wss://payload-exchange.fly.dev/ws</code></pre>
+
+<p>After connecting, subscribe to task classes:</p>
+<pre><code>{"type": "subscribe", "taskClasses": ["price_feed", "search"]}</code></pre>
+
+<hr>
+
+<h2>Settlement</h2>
+
+<p>Payment uses <strong>MPP (Machine Payments Protocol)</strong> over <strong>Tempo</strong> testnet.</p>
+
+<p>When a buyer requests an attested result via <code>GET /api/orders/:id/result</code>, the coordinator returns a <code>402 Payment Required</code> with a payment challenge. The buyer's MPP client handles the challenge automatically — signs a credential, sends it with the retry, and the coordinator verifies payment on Tempo before releasing the result.</p>
+
+<p>Settlement currency: <strong>pathUSD</strong> on Tempo testnet.</p>
+
+<hr>
+
+<h2>Running the Example Agents</h2>
+
+<pre><code># Terminal 1: Start the solver
+COORDINATOR_URL=https://payload-exchange.fly.dev \
+SOLVER_ADDRESS=0xMySolver \
+bun run apps/solver-agent/src/index.ts
+
+# Terminal 2: Start the buyer
+COORDINATOR_URL=https://payload-exchange.fly.dev \
+BUYER_ADDRESS=0xMyBuyer \
+bun run apps/buyer-agent/src/index.ts</code></pre>
+
+<p>The solver registers, the buyer submits an intent, the matching engine pairs them, the solver fulfills, attestation verifies, and the buyer pays to receive the result.</p>
+
+<hr>
+
+<p><a href="https://github.com/microchipgnu/px">github.com/microchipgnu/px</a></p>
+
+</body>
+</html>
