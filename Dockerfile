@@ -6,6 +6,8 @@ WORKDIR /app
 COPY package.json bun.lock ./
 COPY apps/web/package.json ./apps/web/
 COPY apps/coordinator/package.json ./apps/coordinator/
+COPY apps/buyer-agent/package.json ./apps/buyer-agent/
+COPY apps/solver-agent/package.json ./apps/solver-agent/
 COPY packages/protocol/package.json ./packages/protocol/
 COPY packages/attestor/package.json ./packages/attestor/
 COPY packages/buyer-sdk/package.json ./packages/buyer-sdk/
