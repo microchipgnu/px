@@ -45,6 +45,7 @@
       "dependencies": {
         "@payload-exchange/protocol": "workspace:*",
         "@payload-exchange/solver-sdk": "workspace:*",
+        "viem": "^2.0.0",
       },
       "devDependencies": {
         "@payload-exchange/tsconfig": "workspace:*",

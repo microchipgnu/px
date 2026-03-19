@@ -1,11 +1,19 @@
 import { BuyerClient, createIntent } from "@payload-exchange/buyer-sdk"
+import { privateKeyToAccount, generatePrivateKey } from "viem/accounts"
 
 const COORDINATOR_URL = process.env.COORDINATOR_URL ?? "http://localhost:4000"
-const BUYER_ADDRESS = process.env.BUYER_ADDRESS ?? "0xBuyerAgent001"
-const TEMPO_PRIVATE_KEY = process.env.TEMPO_PRIVATE_KEY
+const TEMPO_PRIVATE_KEY = process.env.TEMPO_PRIVATE_KEY ?? generatePrivateKey()
+
+const account = privateKeyToAccount(TEMPO_PRIVATE_KEY as `0x${string}`)
+const BUYER_ADDRESS = account.address
 
 async function main() {
 	const client = new BuyerClient(COORDINATOR_URL)
+
+	console.log(`[buyer] Wallet: ${BUYER_ADDRESS}`)
+	if (!process.env.TEMPO_PRIVATE_KEY) {
+		console.log("[buyer] No TEMPO_PRIVATE_KEY set — generated ephemeral wallet (cannot pay via MPP)")
+	}
 
 	// 1. Create an intent for a price_feed task
 	console.log("[buyer] Submitting intent: ETH/USD price from 3+ sources...")
@@ -72,12 +80,10 @@ async function main() {
 		console.log(`[buyer] 402 Payment Required -- $${amount} via Tempo`)
 
 		// 6. If mppx client is configured, auto-pay
-		if (TEMPO_PRIVATE_KEY) {
+		if (process.env.TEMPO_PRIVATE_KEY) {
 			console.log("[buyer] Paying via MPP...")
 			try {
 				const { Mppx, tempo } = await import("mppx/client")
-				const { privateKeyToAccount } = await import("viem/accounts")
-				const account = privateKeyToAccount(TEMPO_PRIVATE_KEY as `0x${string}`)
 				const mpp = Mppx.create({
 					methods: [tempo({ account })],
 					polyfill: false,

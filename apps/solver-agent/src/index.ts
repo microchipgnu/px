@@ -1,8 +1,12 @@
 import { SolverClient } from "@payload-exchange/solver-sdk"
 import type { WSEvent } from "@payload-exchange/solver-sdk"
+import { privateKeyToAccount, generatePrivateKey } from "viem/accounts"
 
 const COORDINATOR_URL = process.env.COORDINATOR_URL ?? "http://localhost:4000"
-const SOLVER_ADDRESS = process.env.SOLVER_ADDRESS ?? "0xSolverAgent001"
+const TEMPO_PRIVATE_KEY = process.env.TEMPO_PRIVATE_KEY ?? generatePrivateKey()
+
+const account = privateKeyToAccount(TEMPO_PRIVATE_KEY as `0x${string}`)
+const SOLVER_ADDRESS = account.address
 
 /**
  * Mock price fetcher. Returns simulated price data for any token pair.
@@ -32,6 +36,10 @@ async function main() {
 	const client = new SolverClient(COORDINATOR_URL)
 
 	// 1. Register as a price_feed solver
+	console.log(`[solver] Wallet: ${SOLVER_ADDRESS}`)
+	if (!process.env.TEMPO_PRIVATE_KEY) {
+		console.log("[solver] No TEMPO_PRIVATE_KEY set — generated ephemeral wallet")
+	}
 	console.log("[solver] Registering as price_feed solver...")
 
 	let registration: { id: string; status: string }

@@ -10,7 +10,8 @@
   },
   "dependencies": {
     "@payload-exchange/solver-sdk": "workspace:*",
-    "@payload-exchange/protocol": "workspace:*"
+    "@payload-exchange/protocol": "workspace:*",
+    "viem": "^2.0.0"
   },
   "devDependencies": {
     "@payload-exchange/tsconfig": "workspace:*",
