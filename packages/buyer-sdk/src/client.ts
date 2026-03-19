@@ -75,13 +75,22 @@ export class BuyerClient {
 		const interval = options?.interval ?? 1_000
 		const deadline = Date.now() + timeout
 
+		// Lifecycle ordering — accept target or any later status
+		const lifecycle = ["open", "matched", "executing", "fulfilled", "attested", "settled"]
+		const targetIdx = lifecycle.indexOf(targetStatus)
+
 		while (Date.now() < deadline) {
 			const status = await this.getStatus(orderId)
-			if (status.status === targetStatus) return status
 
-			// If the order reached a terminal status that isn't what we want, bail out
-			const terminal = ["settled", "expired", "cancelled", "disputed"]
-			if (terminal.includes(status.status) && status.status !== targetStatus) {
+			// Exact match or advanced past target in the lifecycle
+			const currentIdx = lifecycle.indexOf(status.status)
+			if (status.status === targetStatus || (targetIdx >= 0 && currentIdx >= targetIdx)) {
+				return status
+			}
+
+			// Terminal failure states
+			const terminal = ["expired", "cancelled", "disputed"]
+			if (terminal.includes(status.status)) {
 				throw new Error(
 					`Order ${orderId} reached terminal status "${status.status}" while waiting for "${targetStatus}"`,
 				)

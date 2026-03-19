@@ -19,9 +19,9 @@ export const runCommand = new Command("run")
 	.option("--seller <address>", "Override seller address")
 	.action(async (_opts, cmd) => {
 		const opts = _opts as Record<string, string | undefined>
-		const parent = cmd.parent?.opts() as { coordinator: string; key?: string; json?: boolean }
+		const parent = cmd.parent?.opts() as { coordinator: string; address?: string; json?: boolean }
 
-		const { address } = resolveWallet(parent.key, "solver")
+		const { address } = resolveWallet(parent.address, "solver")
 		const sellerAddress = opts.seller ?? address
 		const json = !!parent.json
 		const taskClasses = (opts.tasks as string).split(",").map((s) => s.trim()) as TaskClass[]

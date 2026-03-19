@@ -3,10 +3,10 @@ import { BuyerClient, createIntent } from "@payload-exchange/buyer-sdk"
 import type { TaskClass } from "@payload-exchange/protocol"
 import { readFileSync } from "node:fs"
 import { log, output } from "../lib/output.js"
-import { resolveWallet } from "../lib/wallet.js"
+import { resolveWallet, tempoRequest } from "../lib/wallet.js"
 
 export const runCommand = new Command("run")
-	.description("Full lifecycle: submit → wait for match → wait for attestation → settle")
+	.description("Full lifecycle: submit → wait for match → wait for attestation → settle via Tempo")
 	.requiredOption("--task <class>", "Task class")
 	.requiredOption("--intent <text>", "Intent description")
 	.requiredOption("--max-price <n>", "Maximum price in USDC")
@@ -19,9 +19,9 @@ export const runCommand = new Command("run")
 	.option("--no-settle", "Stop after attestation, do not auto-settle")
 	.action(async (_opts, cmd) => {
 		const opts = _opts as Record<string, string | boolean | undefined>
-		const parent = cmd.parent?.opts() as { coordinator: string; key?: string; json?: boolean }
+		const parent = cmd.parent?.opts() as { coordinator: string; address?: string; json?: boolean }
 
-		const { account, address, hasKey } = resolveWallet(parent.key, "buyer")
+		const { address, tempoCli } = resolveWallet(parent.address, "buyer")
 		const buyerAddress = (opts.buyer as string) ?? address
 		const json = !!parent.json
 
@@ -93,22 +93,17 @@ export const runCommand = new Command("run")
 		const rawRes = await client.getResult(order.id)
 
 		if (rawRes.status === 402) {
-			if (!hasKey) {
-				const challenge = await rawRes.json()
-				log("[buyer] 402 Payment Required — pass --key to auto-settle")
-				output(challenge, json)
-				process.exit(2)
-			}
-
-			log("[buyer] Paying via MPP...")
+			log("[buyer] Paying via Tempo wallet...")
 			try {
-				const { Mppx, tempo } = await import("mppx/client")
-				const mpp = Mppx.create({
-					methods: [tempo({ account })],
-					polyfill: false,
-				})
+				const resultUrl = `${parent.coordinator.replace(/\/+$/, "")}/api/orders/${order.id}/result`
+				const raw = tempoRequest(tempoCli, resultUrl)
+				const result = JSON.parse(raw)
 
-				const result = await client.settle(order.id, mpp.fetch as typeof fetch)
+				const settlement = result.settlement as Record<string, unknown> | undefined
+				if (settlement?.txHash) {
+					log(`[buyer] Tx: ${settlement.txHash}`)
+				}
+
 				log("[buyer] Settled!")
 				output(result, json)
 			} catch (err) {

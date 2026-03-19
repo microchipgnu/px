@@ -16,9 +16,9 @@ export const fulfillCommand = new Command("fulfill")
 	.option("--seller <address>", "Override seller address")
 	.action(async (_opts, cmd) => {
 		const opts = _opts as Record<string, string | boolean | undefined>
-		const parent = cmd.parent?.opts() as { coordinator: string; key?: string; json?: boolean }
+		const parent = cmd.parent?.opts() as { coordinator: string; address?: string; json?: boolean }
 
-		const { address } = resolveWallet(parent.key, "solver")
+		const { address } = resolveWallet(parent.address, "solver")
 		const sellerAddress = (opts.seller as string) ?? address
 
 		// Read result from one of three sources

@@ -1,41 +1,30 @@
 import { Command } from "commander"
 import { BuyerClient } from "@payload-exchange/buyer-sdk"
 import { log, output } from "../lib/output.js"
-import { resolveWallet } from "../lib/wallet.js"
+import { resolveWallet, tempoRequest } from "../lib/wallet.js"
 
 export const settleCommand = new Command("settle")
-	.description("Pay for an attested result via MPP on Tempo")
+	.description("Pay for an attested result via Tempo wallet")
 	.requiredOption("--order <id>", "Order ID")
 	.action(async (_opts, cmd) => {
 		const opts = _opts as { order: string }
-		const parent = cmd.parent?.opts() as { coordinator: string; key?: string; json?: boolean }
+		const parent = cmd.parent?.opts() as { coordinator: string; address?: string; json?: boolean }
 
-		if (!parent.key) {
-			log("[buyer] Error: --key is required for settlement")
-			process.exit(1)
-		}
+		const { tempoCli } = resolveWallet(parent.address, "buyer")
+		const resultUrl = `${parent.coordinator.replace(/\/+$/, "")}/api/orders/${opts.order}/result`
 
-		const { account } = resolveWallet(parent.key, "buyer")
-		const client = new BuyerClient(parent.coordinator)
-
-		log(`[buyer] Settling order ${opts.order} via MPP...`)
+		log(`[buyer] Settling order ${opts.order} via Tempo wallet...`)
 
 		try {
-			const { Mppx, tempo } = await import("mppx/client")
-			const mpp = Mppx.create({
-				methods: [tempo({ account })],
-				polyfill: false,
-			})
+			const raw = tempoRequest(tempoCli, resultUrl)
+			const result = JSON.parse(raw)
 
-			const result = await client.settle(opts.order, mpp.fetch as typeof fetch)
-			log("[buyer] Settled! Result received.")
-
-			const data = result as Record<string, unknown>
-			const settlement = data.settlement as Record<string, unknown> | undefined
+			const settlement = result.settlement as Record<string, unknown> | undefined
 			if (settlement?.txHash) {
 				log(`[buyer] Tx: ${settlement.txHash}`)
 			}
 
+			log("[buyer] Settled!")
 			output(result, !!parent.json)
 		} catch (err) {
 			log(`[buyer] Settlement failed: ${(err as Error).message}`)

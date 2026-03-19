@@ -14,12 +14,12 @@ export const submitCommand = new Command("submit")
 	.option("--constraints-file <path>", "Path to JSON file with constraints")
 	.option("--proof-requirements <csv>", "Comma-separated proof requirements")
 	.option("--expires-in <seconds>", "Seconds until expiry", "3600")
-	.option("--buyer <address>", "Override buyer address (default: derived from --key)")
+	.option("--buyer <address>", "Override buyer address")
 	.action(async (_opts, cmd) => {
 		const opts = _opts as Record<string, string | undefined>
-		const parent = cmd.parent?.opts() as { coordinator: string; key?: string; json?: boolean }
+		const parent = cmd.parent?.opts() as { coordinator: string; address?: string; json?: boolean }
 
-		const { address } = resolveWallet(parent.key, "buyer")
+		const { address } = resolveWallet(parent.address, "buyer")
 		const buyerAddress = opts.buyer ?? address
 
 		let constraints: Record<string, unknown> | undefined

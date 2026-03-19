@@ -11,7 +11,7 @@
     },
     "apps/buyer-agent": {
       "name": "@payload-exchange/buyer-agent",
-      "version": "0.0.1",
+      "version": "0.0.2",
       "bin": {
         "px-buyer": "./dist/index.js",
       },
@@ -19,8 +19,6 @@
         "@payload-exchange/buyer-sdk": "workspace:*",
         "@payload-exchange/protocol": "workspace:*",
         "commander": "^13.0.0",
-        "mppx": "^0.4.7",
-        "viem": "^2.0.0",
       },
       "devDependencies": {
         "@payload-exchange/tsconfig": "workspace:*",
@@ -45,7 +43,7 @@
     },
     "apps/solver-agent": {
       "name": "@payload-exchange/solver-agent",
-      "version": "0.0.1",
+      "version": "0.0.2",
       "bin": {
         "px-solver": "./dist/index.js",
       },
@@ -53,7 +51,6 @@
         "@payload-exchange/protocol": "workspace:*",
         "@payload-exchange/solver-sdk": "workspace:*",
         "commander": "^13.0.0",
-        "viem": "^2.0.0",
       },
       "devDependencies": {
         "@payload-exchange/tsconfig": "workspace:*",
@@ -93,7 +90,7 @@
     },
     "packages/buyer-sdk": {
       "name": "@payload-exchange/buyer-sdk",
-      "version": "0.0.1",
+      "version": "0.0.2",
       "dependencies": {
         "@payload-exchange/protocol": "workspace:*",
         "mppx": "^0.4.7",
@@ -105,7 +102,7 @@
     },
     "packages/protocol": {
       "name": "@payload-exchange/protocol",
-      "version": "0.0.1",
+      "version": "0.0.2",
       "dependencies": {
         "zod": "^3.24.0",
       },
@@ -116,7 +113,7 @@
     },
     "packages/solver-sdk": {
       "name": "@payload-exchange/solver-sdk",
-      "version": "0.0.1",
+      "version": "0.0.2",
       "dependencies": {
         "@payload-exchange/protocol": "workspace:*",
       },

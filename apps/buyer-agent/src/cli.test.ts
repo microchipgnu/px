@@ -5,7 +5,7 @@ function buildProgram(argv: string[], env: Record<string, string | undefined> = 
 	const program = new Command()
 		.name("px-buyer")
 		.option("--coordinator <url>", "Coordinator URL", env.COORDINATOR_URL ?? "https://px-test.fly.dev")
-		.option("--key <hex>", "Tempo private key", env.TEMPO_PRIVATE_KEY)
+		.option("--address <addr>", "Override wallet address")
 		.option("--json", "Output raw JSON")
 		.exitOverride()
 
@@ -48,7 +48,7 @@ describe("px-buyer global options", () => {
 		const { program } = buildProgram(["submit", "--task", "search", "--intent", "test", "--max-price", "1"])
 		const opts = program.opts()
 		expect(opts.coordinator).toBe("https://px-test.fly.dev")
-		expect(opts.key).toBeUndefined()
+		expect(opts.address).toBeUndefined()
 		expect(opts.json).toBeUndefined()
 	})
 
