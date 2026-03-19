@@ -74,8 +74,16 @@ export const listenCommand = new Command("listen")
 						)
 
 						let resultData: unknown
+						let proofData: Record<string, unknown> | undefined
 						try {
-							resultData = JSON.parse(resultStr)
+							const parsed = JSON.parse(resultStr)
+							// If exec output has { result, proof }, extract both
+							if (parsed && typeof parsed === "object" && "result" in parsed) {
+								resultData = parsed.result
+								proofData = parsed.proof as Record<string, unknown> | undefined
+							} else {
+								resultData = parsed
+							}
 						} catch {
 							resultData = resultStr
 						}
@@ -86,6 +94,7 @@ export const listenCommand = new Command("listen")
 								orderId: data.orderId,
 								sellerId: sellerAddress,
 								result: resultData,
+								proof: proofData,
 							})
 
 							if (response.attestation.success) {
