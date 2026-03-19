@@ -46,6 +46,54 @@ export function useLiveData(enabled: boolean) {
 		setActivity((prev) => [event, ...prev].slice(0, MAX_ACTIVITY))
 	}, [])
 
+	// Load persisted activity history on mount
+	useEffect(() => {
+		if (!enabled) return
+
+		const loadHistory = async () => {
+			try {
+				const res = await fetch("/api/activity")
+				if (!res.ok) return
+				const events = (await res.json()) as Array<{
+					id: string
+					event: string
+					data: Record<string, unknown>
+					timestamp: number
+				}>
+
+				// Seed activity feed
+				const mapped: ActivityEvent[] = events.map((e) => ({
+					id: e.id,
+					type: e.event as ActivityEventType,
+					timestamp: Math.floor(e.timestamp / 1000),
+					orderId: e.data.orderId as string | undefined,
+					buyer: e.data.buyer as string | undefined,
+					seller: e.data.seller as string | undefined,
+					taskClass: e.data.taskClass as ActivityEvent["taskClass"],
+					intent: e.data.intent as string | undefined,
+					price: (e.data.agreedPrice ?? e.data.maxPrice ?? e.data.buyerPaid) as number | undefined,
+				}))
+				setActivity(mapped.slice(0, MAX_ACTIVITY))
+
+				// Derive counters from history
+				const matches = events.filter((e) => e.event === "order_matched")
+				setTotalMatched(matches.length)
+				setTotalVolume(
+					matches.reduce((sum, e) => sum + ((e.data.agreedPrice as number) ?? 0), 0),
+				)
+				setMatchHistory(
+					matches
+						.map((e) => ({ t: e.timestamp, price: (e.data.agreedPrice as number) ?? 0 }))
+						.slice(-120),
+				)
+			} catch {
+				// coordinator unreachable
+			}
+		}
+
+		loadHistory()
+	}, [enabled])
+
 	// Poll orderbook snapshot
 	useEffect(() => {
 		if (!enabled) return
