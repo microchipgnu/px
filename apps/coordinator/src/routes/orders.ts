@@ -8,6 +8,11 @@ import { mppx } from "../mpp"
 export function createOrderRoutes(orderbook: Orderbook) {
 	const app = new Hono()
 
+	function emit(event: string, data: unknown): void {
+		broadcast(event, data)
+		orderbook.logActivity(event, data)
+	}
+
 	// Submit a buy order (intent)
 	app.post("/buy", async (c) => {
 		const body = await c.req.json()
@@ -28,7 +33,7 @@ export function createOrderRoutes(orderbook: Orderbook) {
 		const order = parsed.data
 		orderbook.addBuyOrder(order)
 
-		broadcast("order_placed", {
+		emit("order_placed", {
 			orderId: order.id,
 			buyer: order.buyer,
 			taskClass: order.taskClass,
@@ -70,7 +75,7 @@ export function createOrderRoutes(orderbook: Orderbook) {
 		const order = parsed.data
 		orderbook.addSellOrder(order)
 
-		broadcast("solver_joined", {
+		emit("solver_joined", {
 			sellerId: order.id,
 			seller: order.seller,
 			taskClasses: order.supportedTaskClasses,
@@ -144,10 +149,22 @@ export function createOrderRoutes(orderbook: Orderbook) {
 			return paymentResult.challenge
 		}
 
-		// Payment verified on Tempo — settle the order
-		const settlement = settleOrder(orderbook, id)
+		// Payment verified on Tempo — extract tx hash from receipt, then settle
+		const wrappedResponse = paymentResult.withReceipt(Response.json({}))
+		let txHash: string | undefined
+		try {
+			const receiptHeader = wrappedResponse.headers.get("Payment-Receipt")
+			if (receiptHeader) {
+				const receiptJson = JSON.parse(atob(receiptHeader.replace(/-/g, "+").replace(/_/g, "/")))
+				txHash = receiptJson.reference
+			}
+		} catch {
+			// receipt parsing failed — settle without tx hash
+		}
 
-		broadcast("settlement_complete", {
+		const settlement = settleOrder(orderbook, id, txHash)
+
+		emit("settlement_complete", {
 			orderId: id,
 			buyerPaid: settlement.buyerPaid,
 			sellerReceived: settlement.sellerReceived,

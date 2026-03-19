@@ -28,6 +28,13 @@ app.use("*", logger())
 app.route("/api/orders", createOrderRoutes(orderbook))
 app.route("/api/fulfillments", createFulfillmentRoutes(orderbook))
 
+app.get("/api/activity", (c) => {
+	const events = [...orderbook.activity.values()]
+		.sort((a, b) => b.timestamp - a.timestamp)
+		.slice(0, 100)
+	return c.json(events)
+})
+
 app.get("/api/health", (c) =>
 	c.json({
 		status: "ok",
@@ -68,12 +75,18 @@ if (existsSync(STATIC_DIR)) {
 
 // ── Matching engine (runs on interval) ────────────────────────────────────────
 
+/** Broadcast event to WebSocket clients AND persist to activity log */
+function emit(event: string, data: unknown): void {
+	broadcast(event, data)
+	orderbook.logActivity(event, data)
+}
+
 const MATCH_INTERVAL = 1000 // 1s
 
 setInterval(() => {
 	const expired = orderbook.expireStale()
 	for (const id of expired) {
-		broadcast("order_expired", { orderId: id })
+		emit("order_expired", { orderId: id })
 	}
 
 	const matches = runMatchingCycle(orderbook)
@@ -83,7 +96,7 @@ setInterval(() => {
 			`${match.buyOrder.taskClass} | $${match.assignment.agreedPrice}`,
 		)
 
-		broadcast("order_matched", {
+		emit("order_matched", {
 			orderId: match.buyOrder.id,
 			buyer: match.buyOrder.buyer,
 			seller: match.sellOrder.seller,

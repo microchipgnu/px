@@ -18,6 +18,13 @@ export type Assignment = {
 	createdAt: number
 }
 
+export type ActivityRecord = {
+	id: string
+	event: string
+	data: unknown
+	timestamp: number
+}
+
 export class Orderbook {
 	buyOrders: SQLiteMap<BuyOrder>
 	sellOrders: SQLiteMap<SellOrder>
@@ -25,6 +32,7 @@ export class Orderbook {
 	fulfillments: SQLiteMap<Fulfillment> // keyed by buy order ID
 	attestations: SQLiteMap<Attestation> // keyed by buy order ID
 	settlements: SQLiteMap<Settlement> // keyed by buy order ID
+	activity: SQLiteMap<ActivityRecord>
 
 	constructor() {
 		const db = openDatabase()
@@ -34,6 +42,17 @@ export class Orderbook {
 		this.fulfillments = new SQLiteMap<Fulfillment>(db, "fulfillments")
 		this.attestations = new SQLiteMap<Attestation>(db, "attestations")
 		this.settlements = new SQLiteMap<Settlement>(db, "settlements")
+		this.activity = new SQLiteMap<ActivityRecord>(db, "activity")
+	}
+
+	logActivity(event: string, data: unknown): void {
+		const record: ActivityRecord = {
+			id: crypto.randomUUID(),
+			event,
+			data,
+			timestamp: Date.now(),
+		}
+		this.activity.set(record.id, record)
 	}
 
 	addBuyOrder(order: BuyOrder): void {

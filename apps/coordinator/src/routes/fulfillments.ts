@@ -7,6 +7,11 @@ import { broadcast } from "../ws/index"
 export function createFulfillmentRoutes(orderbook: Orderbook) {
 	const app = new Hono()
 
+	function emit(event: string, data: unknown): void {
+		broadcast(event, data)
+		orderbook.logActivity(event, data)
+	}
+
 	app.post("/", async (c) => {
 		const body = await c.req.json()
 
@@ -41,18 +46,18 @@ export function createFulfillmentRoutes(orderbook: Orderbook) {
 		try {
 			const { attestation } = submitFulfillment(orderbook, fulfillment)
 
-			broadcast("fulfillment_submitted", {
+			emit("fulfillment_submitted", {
 				orderId: fulfillment.orderId,
 				sellerId: fulfillment.sellerId,
 			})
 
 			if (attestation.success) {
-				broadcast("attestation_passed", {
+				emit("attestation_passed", {
 					orderId: fulfillment.orderId,
 					checks: attestation.checks,
 				})
 			} else {
-				broadcast("attestation_failed", {
+				emit("attestation_failed", {
 					orderId: fulfillment.orderId,
 					reason: attestation.reason,
 					checks: attestation.checks,
