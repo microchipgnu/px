@@ -1,0 +1,81 @@
+import { Hono } from "hono"
+import { Fulfillment } from "@payload-exchange/protocol"
+import type { Orderbook } from "../engine/orderbook"
+import { submitFulfillment } from "../engine/lifecycle"
+import { broadcast } from "../ws/index"
+
+export function createFulfillmentRoutes(orderbook: Orderbook) {
+	const app = new Hono()
+
+	app.post("/", async (c) => {
+		const body = await c.req.json()
+
+		const raw = {
+			id: crypto.randomUUID(),
+			timestamp: Math.floor(Date.now() / 1000),
+			...body,
+		}
+
+		const parsed = Fulfillment.safeParse(raw)
+		if (!parsed.success) {
+			return c.json({ error: "Invalid fulfillment", details: parsed.error.flatten() }, 400)
+		}
+
+		const fulfillment = parsed.data
+
+		// Check the order exists
+		const buyOrder = orderbook.getBuyOrder(fulfillment.orderId)
+		if (!buyOrder) {
+			return c.json({ error: `Order ${fulfillment.orderId} not found` }, 404)
+		}
+
+		// Check the solver is the assigned one
+		const assignment = orderbook.assignments.get(fulfillment.orderId)
+		if (!assignment) {
+			return c.json({ error: "No assignment for this order" }, 400)
+		}
+		if (assignment.sellerId !== fulfillment.sellerId) {
+			return c.json({ error: "Solver does not match assignment" }, 403)
+		}
+
+		try {
+			const { attestation } = submitFulfillment(orderbook, fulfillment)
+
+			broadcast("fulfillment_submitted", {
+				orderId: fulfillment.orderId,
+				sellerId: fulfillment.sellerId,
+			})
+
+			if (attestation.success) {
+				broadcast("attestation_passed", {
+					orderId: fulfillment.orderId,
+					checks: attestation.checks,
+				})
+			} else {
+				broadcast("attestation_failed", {
+					orderId: fulfillment.orderId,
+					reason: attestation.reason,
+					checks: attestation.checks,
+				})
+			}
+
+			return c.json({
+				orderId: fulfillment.orderId,
+				attestation: {
+					success: attestation.success,
+					checks: attestation.checks,
+					reason: attestation.reason,
+				},
+				// Settlement happens when buyer pays via GET /orders/:id/result (402 flow)
+				nextStep: attestation.success
+					? `GET /api/orders/${fulfillment.orderId}/result to trigger payment`
+					: "disputed — attestation failed",
+			}, attestation.success ? 200 : 422)
+		} catch (err) {
+			const message = err instanceof Error ? err.message : "Unknown error"
+			return c.json({ error: message }, 400)
+		}
+	})
+
+	return app
+}

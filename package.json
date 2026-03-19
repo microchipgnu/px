@@ -1,0 +1,21 @@
+{
+  "name": "payload-exchange",
+  "private": true,
+  "packageManager": "bun@1.2.21",
+  "workspaces": ["apps/*", "packages/*", "tooling/*"],
+  "scripts": {
+    "dev": "turbo dev",
+    "build": "turbo build",
+    "lint": "biome check .",
+    "lint:fix": "biome check --write .",
+    "format": "biome format --write .",
+    "typecheck": "turbo typecheck",
+    "clean": "turbo clean",
+    "test": "bun test --recursive"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^1.9.0",
+    "turbo": "^2.4.0",
+    "typescript": "^5.7.0"
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "name": "@payload-exchange/coordinator",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "bun run --watch src/index.ts",
+    "start": "bun run src/index.ts",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@payload-exchange/attestor": "workspace:*",
+    "@payload-exchange/protocol": "workspace:*",
+    "hono": "^4.7.0",
+    "mppx": "^0.4.7"
+  },
+  "devDependencies": {
+    "@payload-exchange/tsconfig": "workspace:*",
+    "@types/bun": "^1.3.11",
+    "typescript": "^5.7.0"
+  }
+}

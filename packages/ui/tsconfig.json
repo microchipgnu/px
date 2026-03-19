@@ -1,0 +1,4 @@
+{
+  "extends": "@payload-exchange/tsconfig/react.json",
+  "include": ["src"]
+}

@@ -1,0 +1,9 @@
+node_modules
+dist
+.turbo
+*.tsbuildinfo
+.vite
+.env
+.env.*
+.git
+README.md
