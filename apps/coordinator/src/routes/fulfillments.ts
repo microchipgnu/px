@@ -44,11 +44,19 @@ export function createFulfillmentRoutes(orderbook: Orderbook) {
 		}
 
 		try {
+			emit("execution_started", {
+				orderId: fulfillment.orderId,
+				sellerId: fulfillment.sellerId,
+				taskClass: buyOrder.taskClass,
+				intent: buyOrder.intent,
+			})
+
 			const { attestation } = submitFulfillment(orderbook, fulfillment)
 
 			emit("fulfillment_submitted", {
 				orderId: fulfillment.orderId,
 				sellerId: fulfillment.sellerId,
+				taskClass: buyOrder.taskClass,
 			})
 
 			if (attestation.success) {

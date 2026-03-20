@@ -5,6 +5,9 @@ import { useState } from "react"
 type Props = {
 	buyOrders: BuyOrder[]
 	sellOrders: SellOrder[]
+	bestBid?: number
+	bestAsk?: number
+	spread?: number
 }
 
 const TASK_LABELS: Record<string, string> = {
@@ -20,11 +23,33 @@ const TASK_LABELS: Record<string, string> = {
 
 type MobileTab = "bids" | "asks"
 
-export function Orderbook({ buyOrders, sellOrders }: Props) {
+export function Orderbook({ buyOrders, sellOrders, bestBid, bestAsk, spread }: Props) {
 	const [mobileTab, setMobileTab] = useState<MobileTab>("bids")
 
 	return (
 		<>
+			{/* Inline stats bar */}
+			{(bestBid !== undefined || bestAsk !== undefined) && (
+				<div className="px-4 py-1 border-b border-border bg-card flex items-center gap-4 font-mono text-[10px] tracking-[0.5px] shrink-0">
+					<span className="text-muted-foreground">OPEN</span>
+					{bestBid !== undefined && bestBid > 0 && (
+						<span className="text-muted-foreground">
+							BID <span className="text-bid ml-1">${formatPrice(bestBid)}</span>
+						</span>
+					)}
+					{bestAsk !== undefined && bestAsk > 0 && (
+						<span className="text-muted-foreground">
+							ASK <span className="text-ask ml-1">${formatPrice(bestAsk)}</span>
+						</span>
+					)}
+					{spread !== undefined && spread > 0 && (
+						<span className="text-muted-foreground">
+							SPREAD <span className="text-foreground ml-1">${formatPrice(spread)}</span>
+						</span>
+					)}
+				</div>
+			)}
+
 			{/* Mobile tab switcher */}
 			<div className="sm:hidden flex border-b border-border bg-card">
 				<button

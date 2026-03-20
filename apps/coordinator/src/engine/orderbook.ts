@@ -97,10 +97,36 @@ export class Orderbook {
 	}
 
 	snapshot() {
+		const now = Math.floor(Date.now() / 1000)
+		const allAssignments = [...this.assignments.values()]
+
+		// Orderbook: only open orders (waiting for a match)
+		const buyOrders = this.getOpenBuyOrders()
+		const sellOrders = this.getOpenSellOrders()
+
+		// Pipeline: all assignments enriched with order data + timestamps
+		const pipeline = allAssignments.map((a) => {
+			const fulfillment = this.fulfillments.get(a.orderId)
+			const attestation = this.attestations.get(a.orderId)
+			const settlement = this.settlements.get(a.orderId)
+			const buyOrder = this.buyOrders.get(a.orderId)
+			const sellOrder = this.sellOrders.get(a.sellerOrderId)
+			return {
+				...a,
+				buyOrder: buyOrder ?? null,
+				sellOrder: sellOrder ?? null,
+				fulfilledAt: fulfillment?.timestamp,
+				attestedAt: attestation?.timestamp,
+				settledAt: settlement?.timestamp,
+				status: buyOrder?.status ?? "unknown",
+			}
+		}).sort((a, b) => b.createdAt - a.createdAt)
+
 		return {
-			buyOrders: [...this.buyOrders.values()],
-			sellOrders: [...this.sellOrders.values()],
-			assignments: [...this.assignments.values()],
+			buyOrders,
+			sellOrders,
+			assignments: allAssignments,
+			pipeline,
 		}
 	}
 

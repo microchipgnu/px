@@ -321,13 +321,15 @@ describe("Orderbook", () => {
 			expect(snap.assignments).toHaveLength(0)
 		})
 
-		it("includes orders of all statuses in snapshot", () => {
+		it("returns only open orders in snapshot buyOrders", () => {
 			book.addBuyOrder(makeBuyOrder({ status: "open" }))
 			book.addBuyOrder(makeBuyOrder({ status: "matched" }))
 			book.addBuyOrder(makeBuyOrder({ status: "settled" }))
 
 			const snap = book.snapshot()
-			expect(snap.buyOrders).toHaveLength(3)
+			// only open orders appear in buyOrders
+			expect(snap.buyOrders).toHaveLength(1)
+			expect(snap.buyOrders[0].status).toBe("open")
 		})
 	})
 })

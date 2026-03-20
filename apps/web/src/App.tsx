@@ -1,21 +1,17 @@
 import { ActivityFeed } from "@/components/ActivityFeed"
 import { DepthChart } from "@/components/DepthChart"
-import { FilterBar } from "@/components/FilterBar"
 import { Header, type DataMode } from "@/components/Header"
 import { Orderbook } from "@/components/Orderbook"
 import { Pipeline } from "@/components/Pipeline"
-import { Stats } from "@/components/Stats"
 import { useOrderbook } from "@/hooks/useOrderbook"
 import { useEffect, useState } from "react"
 
 export function App() {
-	const [mode, setMode] = useState<DataMode>("mock")
+	const [mode, setMode] = useState<DataMode>("live")
 
 	const {
 		buyOrders,
 		sellOrders,
-		filter,
-		updateFilter,
 		stats,
 		activity,
 		matchedPairs,
@@ -40,24 +36,27 @@ export function App() {
 				mode={mode}
 				onModeChange={setMode}
 			/>
-			<Stats
-				bestBid={stats.bestBid}
-				bestAsk={stats.bestAsk}
-				spread={stats.spread}
-				totalBidVolume={stats.totalBidVolume}
-				totalAskVolume={stats.totalAskVolume}
-				bidCount={buyOrders.length}
-				askCount={sellOrders.length}
-			/>
-			<FilterBar filter={filter} onFilterChange={updateFilter} />
-			<div className="flex-1 min-h-0 flex flex-col overflow-hidden">
+
+			{/* The star: execution pipeline */}
+			<Pipeline pairs={matchedPairs} />
+
+			{/* Open orders + depth */}
+			<div className="flex-1 min-h-0 flex overflow-hidden">
 				<div className="flex-1 min-h-0 overflow-hidden">
-					<Orderbook buyOrders={buyOrders} sellOrders={sellOrders} />
+					<Orderbook
+						buyOrders={buyOrders}
+						sellOrders={sellOrders}
+						bestBid={stats.bestBid}
+						bestAsk={stats.bestAsk}
+						spread={stats.spread}
+					/>
 				</div>
-				<DepthChart buyOrders={buyOrders} sellOrders={sellOrders} matchHistory={matchHistory} />
-				<Pipeline pairs={matchedPairs} />
-				<ActivityFeed events={activity} />
+				<div className="hidden lg:block w-80 border-l border-border shrink-0">
+					<DepthChart buyOrders={buyOrders} sellOrders={sellOrders} matchHistory={matchHistory} />
+				</div>
 			</div>
+
+			<ActivityFeed events={activity} />
 		</div>
 	)
 }

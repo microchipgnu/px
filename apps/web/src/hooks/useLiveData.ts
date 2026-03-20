@@ -51,6 +51,13 @@ type Assignment = {
 	createdAt: number
 }
 
+type PipelineEntry = Assignment & {
+	fulfilledAt?: number
+	attestedAt?: number
+	settledAt?: number
+	status: string
+}
+
 export function useLiveData(enabled: boolean, baseUrl?: string) {
 	const [buyOrders, setBuyOrders] = useState<BuyOrder[]>([])
 	const [sellOrders, setSellOrders] = useState<SellOrder[]>([])
@@ -126,31 +133,51 @@ export function useLiveData(enabled: boolean, baseUrl?: string) {
 				setBuyOrders(data.buyOrders ?? [])
 				setSellOrders(data.sellOrders ?? [])
 
-				// Derive matched pairs from assignments
-				const pairs: MatchedPair[] = (data.assignments ?? [])
-					.map((a: Assignment) => {
-						const buyOrder = (data.buyOrders ?? []).find((o: BuyOrder) => o.id === a.orderId)
-						const sellOrder = (data.sellOrders ?? []).find((o: SellOrder) => o.id === a.sellerOrderId)
+				// Use pipeline data (enriched with order data + timestamps)
+				type PipelineItem = PipelineEntry & { buyOrder?: BuyOrder | null; sellOrder?: SellOrder | null }
+				const pipelineItems: PipelineItem[] = data.pipeline ?? []
+
+				// Fall back to assignment-based lookup if pipeline not available
+				const allBuyMap = new Map<string, BuyOrder>()
+				for (const o of data.buyOrders ?? []) allBuyMap.set(o.id, o)
+				const allSellMap = new Map<string, SellOrder>()
+				for (const o of data.sellOrders ?? []) allSellMap.set(o.id, o)
+
+				const source = pipelineItems.length > 0 ? pipelineItems : (data.assignments ?? []) as PipelineItem[]
+
+				const pairs: MatchedPair[] = source
+					.map((p) => {
+						const buyOrder = p.buyOrder ?? allBuyMap.get(p.orderId)
+						const sellOrder = p.sellOrder ?? allSellMap.get(p.sellerOrderId)
 						if (!buyOrder || !sellOrder) return null
+						const status = p.status ?? buyOrder.status
+						const stage =
+							status === "settled" ? "settled"
+								: status === "attested" ? "attested"
+								: status === "fulfilled" ? "fulfilled"
+								: status === "executing" ? "executing"
+								: "matched"
 						return {
 							buyOrder,
 							sellOrder,
-							stage:
-								buyOrder.status === "settled"
-									? "settled"
-									: buyOrder.status === "attested"
-										? "attested"
-										: buyOrder.status === "fulfilled"
-											? "fulfilled"
-											: buyOrder.status === "executing"
-												? "executing"
-												: "matched",
-							matchedAt: a.createdAt * 1000,
+							stage,
+							matchedAt: p.createdAt * 1000,
+							fulfilledAt: p.fulfilledAt ? p.fulfilledAt * 1000 : undefined,
+							attestedAt: p.attestedAt ? p.attestedAt * 1000 : undefined,
+							settledAt: p.settledAt ? p.settledAt * 1000 : undefined,
 						} satisfies MatchedPair
 					})
 					.filter(Boolean) as MatchedPair[]
 
-				setMatchedPairs(pairs.slice(0, 8))
+				// Filter out stalled non-settled orders (stuck for >10 min)
+				const STALE_MS = 10 * 60 * 1000
+				const now = Date.now()
+				const fresh = pairs.filter((p) => {
+					if (p.stage === "settled") return true
+					return now - p.matchedAt < STALE_MS
+				})
+
+				setMatchedPairs(fresh.slice(0, 20))
 			} catch {
 				// coordinator unreachable
 			}

@@ -17,6 +17,7 @@ primary_region = 'cdg'
 [env]
   DB_PATH = "/data/px.db"
   TEMPO_TESTNET = "false"
+  TEMPO_CURRENCY = "0x20c000000000000000000000b9537d11c60e8b50"
   PX_NETWORK = "mainnet"
 
 [mounts]

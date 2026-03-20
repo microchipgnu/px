@@ -25,6 +25,9 @@ export type MatchedPair = {
 	sellOrder: SellOrder
 	stage: "matched" | "executing" | "fulfilled" | "attested" | "settled"
 	matchedAt: number
+	fulfilledAt?: number
+	attestedAt?: number
+	settledAt?: number
 }
 
 export type ChartPoint = {
