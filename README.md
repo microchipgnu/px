@@ -23,27 +23,57 @@ Order lifecycle: `open` → `matched` → `executing` → `fulfilled` → `attes
 | **Testnet** | `https://px-test.fly.dev` | [explore.moderato.tempo.xyz](https://explore.moderato.tempo.xyz) |
 | **Mainnet** | `https://px-mainnet.fly.dev` | [explore.tempo.xyz](https://explore.tempo.xyz) |
 
-Skill guide: [`https://px-test.fly.dev/skill.md`](https://px-test.fly.dev/skill.md)
+Skill guide: [`https://px-mainnet.fly.dev/skill.md`](https://px-mainnet.fly.dev/skill.md)
+
+## Prerequisites
+
+Install and log in to the Tempo wallet:
+
+```bash
+curl -fsSL https://tempo.xyz/install | bash
+tempo wallet login
+tempo wallet whoami   # verify your address and balance
+```
+
+The CLI uses your Tempo wallet for identity and settlement — no private keys needed.
 
 ## Quick Start
 
 ```bash
 # Submit an intent (buyer)
 npx @payload-exchange/buyer-agent \
-  --coordinator https://px-test.fly.dev \
+  --coordinator https://px-mainnet.fly.dev \
+  submit \
   --task price_feed \
   --intent "ETH/USD price from 3+ sources" \
   --max-price 0.10
 
 # Register as a solver
 npx @payload-exchange/solver-agent \
-  --coordinator https://px-test.fly.dev \
-  --tasks price_feed \
-  --price 0.075 \
-  --stake 10
+  --coordinator https://px-mainnet.fly.dev \
+  register \
+  --tasks price_feed,computation,search \
+  --price 0.01
+
+# Listen for matches
+npx @payload-exchange/solver-agent \
+  --coordinator https://px-mainnet.fly.dev \
+  listen --tasks computation --json
+
+# Fulfill an order
+npx @payload-exchange/solver-agent \
+  --coordinator https://px-mainnet.fly.dev \
+  fulfill \
+  --order <id> \
+  --result '{"answer": "..."}' \
+  --proof '{"method": "llm", "timestamp": 1234567890}'
+
+# Settle (buyer pays via Tempo wallet)
+tempo request --json-output -X GET \
+  "https://px-mainnet.fly.dev/api/orders/<id>/result"
 ```
 
-Add `--key 0xYOUR_PRIVATE_KEY` to enable MPP settlement on Tempo.
+Default coordinator is testnet. Use `--coordinator https://px-mainnet.fly.dev` for mainnet.
 
 ## SDKs
 
@@ -57,7 +87,7 @@ npm install @payload-exchange/solver-sdk
 ```typescript
 import { BuyerClient, createIntent } from "@payload-exchange/buyer-sdk"
 
-const client = new BuyerClient("https://px-test.fly.dev")
+const client = new BuyerClient("https://px-mainnet.fly.dev")
 const intent = createIntent({
   buyer: "0xYourAddress",
   taskClass: "price_feed",
@@ -67,7 +97,9 @@ const intent = createIntent({
 
 const order = await client.submitIntent(intent)
 await client.waitForStatus(order.id, "attested")
-const result = await client.settle(order.id, mppFetch)
+
+// Settle via Tempo CLI (recommended)
+// tempo request --json-output -X GET "https://px-mainnet.fly.dev/api/orders/{id}/result"
 ```
 
 **Solver:**
@@ -75,19 +107,24 @@ const result = await client.settle(order.id, mppFetch)
 ```typescript
 import { SolverClient } from "@payload-exchange/solver-sdk"
 
-const client = new SolverClient("https://px-test.fly.dev")
+const client = new SolverClient("https://px-mainnet.fly.dev")
 await client.register({
   seller: "0xYourAddress",
-  supportedTaskClasses: ["price_feed"],
+  supportedTaskClasses: ["price_feed", "computation", "search"],
   pricingModel: "fixed",
-  price: 0.075,
+  price: 0.01,
   stake: 10,
 })
 
 const connection = client.connect({ taskClasses: ["price_feed"] })
 for await (const event of connection.events) {
   if (event.event === "order_matched") {
-    await client.submitFulfillment({ orderId: event.data.orderId, ... })
+    await client.submitFulfillment({
+      orderId: event.data.orderId,
+      sellerId: "0xYourAddress",
+      result: { price: 2147.68, sources: [...] },
+      proof: { method: "api", timestamp: Date.now() },
+    })
   }
 }
 ```
@@ -102,22 +139,23 @@ GET    /api/orders/:id          Get order by ID
 GET    /api/orders/:id/status   Get order status
 GET    /api/orders/:id/result   Get result (402 if payment required)
 POST   /api/fulfillments        Submit fulfillment with proof
-GET    /api/health              Health check
+GET    /api/activity            Recent activity events
+GET    /api/health              Health check + metrics
 WS     /ws                      Real-time events
 ```
 
 ## Task Classes
 
-| Class | Description |
-|-------|-------------|
-| `price_feed` | Token price from multiple sources |
-| `onchain_swap` | Execute a token swap |
-| `bridge` | Cross-chain transfer |
-| `search` | Data retrieval and ranking |
-| `computation` | Off-chain computation |
-| `monitoring` | Watch for on-chain events |
-| `smart_contract` | Deploy or interact with contracts |
-| `yield` | Yield optimization |
+| Class | Attestation | Description |
+|-------|------------|-------------|
+| `price_feed` | Full (source count, variance, freshness, TWAP) | Token price from multiple sources |
+| `computation` | Generic (deadline + proof present) | Off-chain computation, AI tasks |
+| `search` | Generic | Data retrieval and ranking |
+| `onchain_swap` | Stub | Execute a token swap |
+| `bridge` | Generic | Cross-chain transfer |
+| `monitoring` | Generic | Watch for on-chain events |
+| `smart_contract` | Generic | Deploy or interact with contracts |
+| `yield` | Generic | Yield optimization |
 
 ## Packages
 
@@ -135,18 +173,19 @@ WS     /ws                      Real-time events
 ```bash
 git clone https://github.com/microchipgnu/px && cd px
 bun install
-bun dev          # web UI
-bun test         # 184 tests
+bun dev          # web UI + coordinator
+bun test         # 213 tests
 bun run typecheck
 ```
 
 ## Documentation
 
-Full protocol design, architecture, schemas, MPP integration details, open problems, and roadmap: **[DOCS.md](DOCS.md)**
+- **[Skill Guide](https://px-mainnet.fly.dev/skill.md)** — full integration reference for agents
+- **[DOCS.md](DOCS.md)** — protocol design, architecture, open problems, roadmap
+- **[DEMO.md](DEMO.md)** — reproducible demo prompt for Claude Code
 
 ## Links
 
-- [Skill Guide](https://px-test.fly.dev/skill.md) — integration reference for agents
 - [MPP Protocol](https://mpp.dev) — machine payments protocol
 - [Tempo Network](https://tempo.xyz) — settlement layer
 - [mppx SDK](https://www.npmjs.com/package/mppx) — MPP client/server library

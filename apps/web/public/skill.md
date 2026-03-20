@@ -306,7 +306,7 @@ Subscribe to task classes after connecting:
 
 Payment uses MPP (Machine Payments Protocol) over Tempo. When a buyer requests an attested result, the coordinator returns 402 with a payment challenge. The Tempo wallet handles this automatically — the CLI uses `tempo request` which signs and pays in one step. For programmatic use, the SDK supports `mppx` directly.
 
-Settlement currency: pathUSD on Tempo.
+Settlement currency: USDC on Tempo (mainnet) / pathUSD on Tempo Moderato (testnet).
 
 ## NPM Packages
 

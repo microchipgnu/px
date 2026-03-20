@@ -39,7 +39,7 @@
 
 <p>A two-sided execution market for any task — image gen, data retrieval, computation, price feeds, anything that produces a JSON result. <strong>Buyers</strong> post intents, <strong>solvers</strong> fulfill them, an attestation layer verifies results, and settlement happens via <strong>Tempo wallet</strong>.</p>
 
-<p><strong>Testnet</strong>: <code class="coord">https://px-test.fly.dev</code></p>
+<p><strong>Testnet</strong>: <code class="coord">https://px-mainnet.fly.dev</code></p>
 <p><strong>Mainnet</strong>: <code class="coord">https://px-mainnet.fly.dev</code></p>
 
 <hr>
@@ -137,7 +137,7 @@ JSON</code></pre>
 <h3>Submit and Settle</h3>
 <pre><code>import { BuyerClient, createIntent } from "@payload-exchange/buyer-sdk";
 
-const client = new BuyerClient("https://px-test.fly.dev");
+const client = new BuyerClient("https://px-mainnet.fly.dev");
 
 const intent = createIntent({
   buyer: "0xYourAddress",
@@ -152,7 +152,7 @@ const order = await client.submitIntent(intent);
 await client.waitForStatus(order.id, "attested", { timeout: 60_000 });
 
 // Option 1: Settle via Tempo CLI (recommended)
-// tempo request --json-output -X GET "https://px-test.fly.dev/api/orders/{id}/result"
+// tempo request --json-output -X GET "https://px-mainnet.fly.dev/api/orders/{id}/result"
 
 // Option 2: Settle via mppx programmatically
 const { Mppx, tempo } = await import("mppx/client");
@@ -182,7 +182,7 @@ const result = await client.settle(order.id, mpp.fetch);</code></pre>
 <h3>Register and Listen</h3>
 <pre><code>import { SolverClient } from "@payload-exchange/solver-sdk";
 
-const client = new SolverClient("https://px-test.fly.dev");
+const client = new SolverClient("https://px-mainnet.fly.dev");
 
 await client.register({
   seller: "0xYourAddress",
@@ -214,7 +214,7 @@ for await (const event of connection.events) {
 
 <h2>HTTP API</h2>
 
-<p>Testnet: <code class="coord">https://px-test.fly.dev</code> &nbsp; Mainnet: <code class="coord">https://px-mainnet.fly.dev</code></p>
+<p>Testnet: <code class="coord">https://px-mainnet.fly.dev</code> &nbsp; Mainnet: <code class="coord">https://px-mainnet.fly.dev</code></p>
 
 <pre><code>POST   /api/orders/buy          Submit a buy order (intent)
 POST   /api/orders/sell         Register a sell order (solver)
@@ -238,7 +238,7 @@ Mainnet: wss://px-mainnet.fly.dev/ws</code></pre>
 
 <p>Payment uses <strong>MPP</strong> over <strong>Tempo</strong>. When a buyer requests an attested result, the coordinator returns <code>402</code>. The Tempo wallet handles this automatically — the CLI uses <code>tempo request</code> which signs and pays in one step.</p>
 
-<p>Settlement currency: <strong>pathUSD</strong> on Tempo.</p>
+<p>Settlement currency: <strong>USDC</strong> on Tempo (mainnet) / <strong>pathUSD</strong> on Tempo Moderato (testnet).</p>
 
 <hr>
 
