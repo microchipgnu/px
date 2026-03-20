@@ -58,7 +58,7 @@ export function Orderbook({ buyOrders, sellOrders }: Props) {
 			</div>
 
 			{/* Desktop: side by side */}
-			<div className="hidden sm:grid grid-cols-2 overflow-hidden">
+			<div className="hidden sm:grid grid-cols-2 overflow-hidden h-full">
 				<BidsColumn orders={buyOrders} />
 				<AsksColumn orders={sellOrders} />
 			</div>
