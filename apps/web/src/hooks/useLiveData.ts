@@ -157,6 +157,7 @@ export function useLiveData(enabled: boolean, baseUrl?: string) {
 								: status === "fulfilled" ? "fulfilled"
 								: status === "executing" ? "executing"
 								: "matched"
+						const settlement = (p as Record<string, unknown>).settlement as Record<string, unknown> | null | undefined
 						return {
 							buyOrder,
 							sellOrder,
@@ -165,6 +166,9 @@ export function useLiveData(enabled: boolean, baseUrl?: string) {
 							fulfilledAt: p.fulfilledAt ? p.fulfilledAt * 1000 : undefined,
 							attestedAt: p.attestedAt ? p.attestedAt * 1000 : undefined,
 							settledAt: p.settledAt ? p.settledAt * 1000 : undefined,
+							result: (p as Record<string, unknown>).result ?? undefined,
+							proof: (p as Record<string, unknown>).proof ?? undefined,
+							txHash: settlement?.txHash as string | undefined,
 						} satisfies MatchedPair
 					})
 					.filter(Boolean) as MatchedPair[]

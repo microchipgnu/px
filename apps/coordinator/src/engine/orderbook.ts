@@ -118,6 +118,9 @@ export class Orderbook {
 				fulfilledAt: fulfillment?.timestamp,
 				attestedAt: attestation?.timestamp,
 				settledAt: settlement?.timestamp,
+				result: fulfillment?.result ?? null,
+				proof: fulfillment?.proof ?? null,
+				settlement: settlement ?? null,
 				status: buyOrder?.status ?? "unknown",
 			}
 		}).sort((a, b) => b.createdAt - a.createdAt)

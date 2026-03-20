@@ -28,6 +28,9 @@ export type MatchedPair = {
 	fulfilledAt?: number
 	attestedAt?: number
 	settledAt?: number
+	result?: unknown
+	proof?: unknown
+	txHash?: string
 }
 
 export type ChartPoint = {
