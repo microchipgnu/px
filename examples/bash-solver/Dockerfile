@@ -19,8 +19,11 @@ COPY packages/ui/package.json ./packages/ui/
 COPY tooling/tsconfig/package.json ./tooling/tsconfig/
 RUN bun install --frozen-lockfile
 
-# Copy source
+# Copy source and build
 COPY . .
+RUN cd packages/protocol && bun run build
+RUN cd packages/solver-sdk && bun run build
+RUN cd apps/solver-agent && bun run build
 
 # Copy solver script
 COPY examples/bash-solver/solve.sh ./solve.sh
@@ -31,10 +34,4 @@ ENV TASKS="computation,search,price_feed"
 ENV PRICE="0.01"
 ENV SOLVER_ADDRESS=""
 
-CMD bun run apps/solver-agent/src/cli.ts \
-    --coordinator $COORDINATOR \
-    ${SOLVER_ADDRESS:+--address $SOLVER_ADDRESS} \
-    run \
-    --tasks $TASKS \
-    --price $PRICE \
-    --exec "./solve.sh"
+CMD ["sh", "-c", "bun apps/solver-agent/dist/index.js --coordinator $COORDINATOR ${SOLVER_ADDRESS:+--address $SOLVER_ADDRESS} run --tasks $TASKS --price $PRICE --exec './solve.sh'"]
