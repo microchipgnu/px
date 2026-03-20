@@ -1,0 +1,13 @@
+{
+  "name": "px-vercel-ai-solver",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "npx @payload-exchange/solver-agent --coordinator https://px-mainnet.fly.dev run --tasks computation,search --price 0.01 --exec 'bun run solve.ts'",
+    "start:testnet": "npx @payload-exchange/solver-agent run --tasks computation,search --price 0.01 --exec 'bun run solve.ts'"
+  },
+  "dependencies": {
+    "ai": "^4",
+    "@ai-sdk/openai": "^1"
+  }
+}
