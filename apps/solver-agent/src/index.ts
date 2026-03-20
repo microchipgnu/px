@@ -9,7 +9,7 @@ import { runCommand } from "./commands/run.js"
 const program = new Command()
 	.name("px-solver")
 	.description("payload.exchange solver CLI — register, listen for matches, fulfill orders")
-	.version("0.0.3")
+	.version("0.0.5")
 	.option("--coordinator <url>", "Coordinator URL", process.env.COORDINATOR_URL ?? "https://px-test.fly.dev")
 	.option("--address <addr>", "Override wallet address (default: from Tempo wallet)")
 	.option("--json", "Output raw JSON (stdout stays clean for piping)")

@@ -10,7 +10,7 @@ import { runCommand } from "./commands/run.js"
 const program = new Command()
 	.name("px-buyer")
 	.description("payload.exchange buyer CLI — submit intents, check status, settle payments")
-	.version("0.0.3")
+	.version("0.0.5")
 	.option("--coordinator <url>", "Coordinator URL", process.env.COORDINATOR_URL ?? "https://px-test.fly.dev")
 	.option("--address <addr>", "Override wallet address (default: from Tempo wallet)")
 	.option("--json", "Output raw JSON (stdout stays clean for piping)")
