@@ -193,6 +193,16 @@ describe("submitFulfillment", () => {
 		expect(() => submitFulfillment(book, fulfillment)).toThrow("expected matched or executing")
 	})
 
+	it("releases sell order back to open on dispute", () => {
+		const { book, buyOrder, sellOrder } = setupMatchedOrder()
+		const fulfillment = makeFulfillment(buyOrder.id, { proof: undefined })
+
+		submitFulfillment(book, fulfillment)
+
+		expect(book.getBuyOrder(buyOrder.id)!.status).toBe("disputed")
+		expect(book.getSellOrder(sellOrder.id)!.status).toBe("open")
+	})
+
 	it("accepts order in executing state", () => {
 		const book = new Orderbook()
 		const buyOrder = makeBuyOrder({ status: "executing" })
@@ -315,6 +325,15 @@ describe("settleOrder", () => {
 		// order is now "disputed"
 		expect(book.getBuyOrder(buyOrder.id)!.status).toBe("disputed")
 		expect(() => settleOrder(book, buyOrder.id)).toThrow("expected attested")
+	})
+
+	it("releases sell order back to open after settlement", () => {
+		const { book, buyOrder, sellOrder } = setupAttestedOrder()
+
+		settleOrder(book, buyOrder.id)
+
+		expect(book.getBuyOrder(buyOrder.id)!.status).toBe("settled")
+		expect(book.getSellOrder(sellOrder.id)!.status).toBe("open")
 	})
 
 	it("uses maxPrice when no assignment exists", () => {

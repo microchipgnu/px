@@ -4,6 +4,14 @@ import type { Orderbook } from "./orderbook"
 
 const NETWORK_FEE_RATE = 0.05 // 5%
 
+// Release a sell order back to "open" so the solver can serve more buyers.
+function releaseSellOrder(orderbook: Orderbook, buyOrderId: string): void {
+	const assignment = orderbook.assignments.get(buyOrderId)
+	if (assignment?.sellerOrderId) {
+		orderbook.updateSellOrderStatus(assignment.sellerOrderId, "open")
+	}
+}
+
 // Handles fulfillment submission → attestation. Does NOT settle.
 // Settlement happens later when buyer pays via MPP 402.
 export function submitFulfillment(
@@ -32,6 +40,8 @@ export function submitFulfillment(
 		orderbook.updateBuyOrderStatus(fulfillment.orderId, "attested")
 	} else {
 		orderbook.updateBuyOrderStatus(fulfillment.orderId, "disputed")
+		// Release the sell order so the solver can serve other buyers
+		releaseSellOrder(orderbook, fulfillment.orderId)
 	}
 
 	return { attestation }
@@ -66,6 +76,9 @@ export function settleOrder(
 
 	orderbook.settlements.set(orderId, settlement)
 	orderbook.updateBuyOrderStatus(orderId, "settled")
+
+	// Release the sell order so the solver can serve other buyers
+	releaseSellOrder(orderbook, orderId)
 
 	return settlement
 }

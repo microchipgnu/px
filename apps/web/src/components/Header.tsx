@@ -22,12 +22,9 @@ export function Header({ totalMatched, totalVolume, ordersPerMinute, mode, onMod
 					<span className="flex items-center h-8 sm:h-9 px-2 sm:px-3 font-mono text-xs sm:text-sm font-medium tracking-[0.5px] bg-foreground text-background">
 						ORDERBOOK
 					</span>
-					<span className="hidden sm:flex items-center h-9 px-3 font-mono text-sm font-medium tracking-[0.5px] text-muted-foreground hover:text-foreground hover:bg-foreground/5 transition-all duration-300 cursor-pointer">
-						AGENTS
-					</span>
-					<span className="hidden sm:flex items-center h-9 px-3 font-mono text-sm font-medium tracking-[0.5px] text-muted-foreground hover:text-foreground hover:bg-foreground/5 transition-all duration-300 cursor-pointer">
-						SOLVERS
-					</span>
+					<a href="/skill" className="hidden sm:flex items-center h-9 px-3 font-mono text-sm font-medium tracking-[0.5px] text-muted-foreground hover:text-foreground hover:bg-foreground/5 transition-all duration-300 no-underline">
+						DOCS
+					</a>
 				</div>
 
 				{/* Right: Stats + Mode toggle */}

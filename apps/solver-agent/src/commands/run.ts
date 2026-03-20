@@ -34,6 +34,14 @@ export const runCommand = new Command("run")
 		}
 
 		const client = new SolverClient(parent.coordinator)
+		const registerParams = {
+			seller: sellerAddress,
+			supportedTaskClasses: taskClasses,
+			pricingModel: (opts.pricingModel ?? "fixed") as PricingModel,
+			price: Number.parseFloat(opts.price as string),
+			stake: Number.parseFloat(opts.stake ?? "0"),
+			executionTerms,
+		}
 
 		// 1. Register
 		log(`[solver] Coordinator: ${parent.coordinator}`)
@@ -41,14 +49,7 @@ export const runCommand = new Command("run")
 		log(`[solver] Registering for: ${taskClasses.join(", ")}`)
 
 		try {
-			const reg = await client.register({
-				seller: sellerAddress,
-				supportedTaskClasses: taskClasses,
-				pricingModel: (opts.pricingModel ?? "fixed") as PricingModel,
-				price: Number.parseFloat(opts.price as string),
-				stake: Number.parseFloat(opts.stake ?? "0"),
-				executionTerms,
-			})
+			const reg = await client.register(registerParams)
 			log(`[solver] Registered: ${reg.id}`)
 		} catch (err) {
 			log(`[solver] Registration failed: ${(err as Error).message}`)
@@ -129,6 +130,14 @@ export const runCommand = new Command("run")
 					output(response, json)
 				} catch (err) {
 					log(`[solver] Exec/fulfill failed: ${(err as Error).message}`)
+				}
+
+				// Re-register so we can serve the next buyer
+				try {
+					const reg = await client.register(registerParams)
+					log(`[solver] Re-registered: ${reg.id}`)
+				} catch (err) {
+					log(`[solver] Re-registration failed: ${(err as Error).message}`)
 				}
 
 				continue
