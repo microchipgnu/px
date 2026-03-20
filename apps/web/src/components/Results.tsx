@@ -1,4 +1,5 @@
 import { formatPrice, truncateAddress } from "@/lib/format"
+import { useInfiniteScroll } from "@/hooks/useInfiniteScroll"
 import { useState } from "react"
 
 type ResultEntry = {
@@ -59,6 +60,7 @@ export function Results({ entries }: Props) {
 	const [expandedId, setExpandedId] = useState<string | null>(null)
 
 	const settled = entries.filter((e) => e.status === "settled" && e.result)
+	const { visible, hasMore, sentinelRef } = useInfiniteScroll(settled, 15)
 
 	return (
 		<div className="h-full flex flex-col overflow-hidden">
@@ -81,7 +83,7 @@ export function Results({ entries }: Props) {
 					</div>
 				)}
 
-				{settled.map((entry) => {
+				{visible.map((entry) => {
 					const expanded = expandedId === entry.orderId
 					return (
 						<div key={entry.orderId} className="border-b border-border">
@@ -161,6 +163,7 @@ export function Results({ entries }: Props) {
 						</div>
 					)
 				})}
+				{hasMore && <div ref={sentinelRef} className="h-8 flex items-center justify-center"><span className="font-mono text-[8px] text-muted-foreground/20">loading...</span></div>}
 			</div>
 		</div>
 	)

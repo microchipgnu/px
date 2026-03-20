@@ -1,5 +1,6 @@
 import type { ActivityEvent, ActivityEventType } from "@payload-exchange/protocol"
 import { formatPrice, truncateAddress } from "@/lib/format"
+import { useInfiniteScroll } from "@/hooks/useInfiniteScroll"
 
 type Props = {
 	events: ActivityEvent[]
@@ -50,6 +51,8 @@ function truncateTxHash(hash: string): string {
 }
 
 export function ActivityFeed({ events }: Props) {
+	const { visible, hasMore, sentinelRef } = useInfiniteScroll(events, 20)
+
 	return (
 		<div className="h-full flex flex-col overflow-hidden">
 			<div className="px-3 py-2 border-b border-border flex items-center gap-2 bg-card/50 shrink-0">
@@ -68,9 +71,10 @@ export function ActivityFeed({ events }: Props) {
 						<span className="font-mono text-[10px] text-muted-foreground/30">NO EVENTS</span>
 					</div>
 				)}
-				{events.map((event, i) => (
+				{visible.map((event, i) => (
 					<ActivityRow key={event.id} event={event} isNew={i === 0} />
 				))}
+				{hasMore && <div ref={sentinelRef} className="h-8 flex items-center justify-center"><span className="font-mono text-[8px] text-muted-foreground/20">loading...</span></div>}
 			</div>
 		</div>
 	)
