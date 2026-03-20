@@ -1,0 +1,19 @@
+app = 'px-solver-bash'
+primary_region = 'cdg'
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  COORDINATOR = "https://px-mainnet.fly.dev"
+  TASKS = "computation,search,price_feed"
+  PRICE = "0.01"
+
+# No HTTP service — this is a worker process
+[processes]
+  solver = ""
+
+[[vm]]
+  memory = '256mb'
+  cpu_kind = 'shared'
+  cpus = 1
