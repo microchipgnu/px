@@ -6,33 +6,22 @@ type Props = {
 	ordersPerMinute: number
 	mode: DataMode
 	onModeChange: (mode: DataMode) => void
-	page?: "dashboard" | "results"
 }
 
-export function Header({ mode, onModeChange, page }: Props) {
+export function Header({ mode, onModeChange }: Props) {
 	return (
 		<nav className="w-full border-b border-border bg-black/95 backdrop-blur">
 			<div className="px-4 sm:px-6 h-11 sm:h-12 flex items-center justify-between">
 				{/* Left: Logo + Nav */}
 				<div className="flex items-center gap-1">
-					<a href="#" className="flex items-center gap-0 no-underline">
+					<div className="flex items-center gap-0">
 						<div className="flex items-center justify-center w-8 h-8 bg-foreground shrink-0">
 							<span className="text-background font-mono font-bold text-xs">px</span>
 						</div>
-						<span className={`flex items-center h-8 px-2 font-mono text-xs font-medium tracking-[0.5px] no-underline ${
-							page !== "results" ? "bg-foreground text-background" : "text-muted-foreground hover:text-foreground hover:bg-foreground/5"
-						}`}>
+						<span className="flex items-center h-8 px-2 font-mono text-xs font-medium tracking-[0.5px] bg-foreground text-background">
 							ORDERBOOK
 						</span>
-					</a>
-					<a
-						href="#results"
-						className={`flex items-center h-8 px-2 font-mono text-xs font-medium tracking-[0.5px] transition-all duration-300 no-underline ${
-							page === "results" ? "bg-foreground text-background" : "text-muted-foreground hover:text-foreground hover:bg-foreground/5"
-						}`}
-					>
-						RESULTS
-					</a>
+					</div>
 					<a href="/skill" className="hidden sm:flex items-center h-8 px-2 font-mono text-xs font-medium tracking-[0.5px] text-muted-foreground hover:text-foreground hover:bg-foreground/5 transition-all duration-300 no-underline">
 						DOCS
 					</a>
