@@ -1,6 +1,5 @@
 import type { BuyOrder, SellOrder } from "@payload-exchange/protocol"
 import { truncateAddress } from "@/lib/format"
-import { useState } from "react"
 
 type MatchedPair = {
 	buyOrder: BuyOrder
@@ -17,12 +16,12 @@ type Props = {
 }
 
 const STAGES = ["matched", "executing", "fulfilled", "attested", "settled"] as const
-const STAGE_META: Record<string, { label: string; color: string; bg: string }> = {
-	matched: { label: "MATCH", color: "text-foreground", bg: "bg-foreground" },
-	executing: { label: "EXEC", color: "text-amber-500", bg: "bg-amber-500" },
-	fulfilled: { label: "DONE", color: "text-blue-400", bg: "bg-blue-400" },
-	attested: { label: "ATTEST", color: "text-accent", bg: "bg-accent" },
-	settled: { label: "SETTLED", color: "text-bid", bg: "bg-bid" },
+const STAGE_META: Record<string, { label: string; color: string; bg: string; bgMuted: string }> = {
+	matched: { label: "MATCH", color: "text-foreground", bg: "bg-foreground", bgMuted: "bg-foreground/20" },
+	executing: { label: "EXEC", color: "text-amber-500", bg: "bg-amber-500", bgMuted: "bg-amber-500/20" },
+	fulfilled: { label: "DONE", color: "text-blue-400", bg: "bg-blue-400", bgMuted: "bg-blue-400/20" },
+	attested: { label: "ATTEST", color: "text-accent", bg: "bg-accent", bgMuted: "bg-accent/20" },
+	settled: { label: "SETTLED", color: "text-bid", bg: "bg-bid", bgMuted: "bg-bid/20" },
 }
 
 const TASK_LABELS: Record<string, string> = {
@@ -44,35 +43,29 @@ function formatDuration(ms: number): string {
 }
 
 function formatTime(ts: number): string {
-	const d = new Date(ts)
-	return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false })
+	return new Date(ts).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false })
 }
 
 export function Pipeline({ pairs }: Props) {
-	const [showHistory, setShowHistory] = useState(true)
-
 	const active = pairs.filter((p) => p.stage !== "settled")
 	const settled = pairs.filter((p) => p.stage === "settled")
 
-	// Stage counts
 	const counts: Record<string, number> = {}
 	for (const s of STAGES) counts[s] = 0
 	for (const p of pairs) counts[p.stage] = (counts[p.stage] ?? 0) + 1
 
 	return (
-		<div className="bg-card border-b border-border flex flex-col overflow-hidden">
-			{/* Header: always visible */}
-			<div className="px-4 sm:px-8 lg:px-12 py-2 border-b border-border flex items-center gap-3 shrink-0">
-				<span className="font-mono text-[10px] font-medium text-muted-foreground tracking-[0.5px]">
+		<div className="h-full flex flex-col overflow-hidden">
+			{/* Header with stage counts */}
+			<div className="px-4 sm:px-6 py-2.5 border-b border-border bg-card/50 flex items-center gap-4 shrink-0">
+				<span className="font-mono text-[11px] font-semibold text-foreground tracking-[0.5px]">
 					EXECUTION PIPELINE
 				</span>
-
-				{/* Stage counts */}
 				<div className="flex items-center gap-3 ml-auto">
 					{STAGES.map((s) => (
 						<div key={s} className="flex items-center gap-1">
 							<span className={`size-1.5 rounded-full ${counts[s] > 0 ? STAGE_META[s].bg : "bg-muted"}`} />
-							<span className={`font-mono text-[9px] tracking-[0.5px] ${counts[s] > 0 ? STAGE_META[s].color : "text-muted-foreground/40"}`}>
+							<span className={`font-mono text-[10px] font-medium ${counts[s] > 0 ? STAGE_META[s].color : "text-muted-foreground/30"}`}>
 								{counts[s]}
 							</span>
 							<span className="hidden sm:inline font-mono text-[9px] text-muted-foreground/40 tracking-[0.5px]">
@@ -83,47 +76,46 @@ export function Pipeline({ pairs }: Props) {
 				</div>
 			</div>
 
-			{/* Active orders */}
-			<div className="overflow-y-auto max-h-[40vh]">
+			{/* Content */}
+			<div className="flex-1 min-h-0 overflow-y-auto">
 				{pairs.length === 0 && (
-					<div className="flex items-center justify-center h-12 font-mono text-[10px] text-muted-foreground tracking-[0.5px]">
-						<span className="size-1.5 rounded-full bg-muted-foreground animate-pulse mr-2" />
-						WAITING FOR MATCHES
+					<div className="flex flex-col items-center justify-center h-full gap-3">
+						<div className="flex items-center gap-1.5">
+							<span className="size-1.5 rounded-full bg-muted-foreground/30 animate-[pulse-dot_2s_ease-in-out_infinite]" />
+							<span className="size-1.5 rounded-full bg-muted-foreground/30 animate-[pulse-dot_2s_ease-in-out_0.3s_infinite]" />
+							<span className="size-1.5 rounded-full bg-muted-foreground/30 animate-[pulse-dot_2s_ease-in-out_0.6s_infinite]" />
+						</div>
+						<span className="font-mono text-[11px] text-muted-foreground/50 tracking-[0.5px]">
+							WAITING FOR MATCHES
+						</span>
+						<span className="font-mono text-[9px] text-muted-foreground/30 max-w-[240px] text-center">
+							Orders appear here when buy intents are matched with solver offers
+						</span>
 					</div>
 				)}
 
+				{/* Active orders */}
 				{active.map((pair) => (
-					<PipelineRow key={pair.buyOrder.id} pair={pair} />
+					<PipelineCard key={pair.buyOrder.id} pair={pair} />
 				))}
 
-				{/* History divider + settled orders */}
+				{/* Settled history */}
 				{settled.length > 0 && (
-					<button
-						type="button"
-						onClick={() => setShowHistory((v) => !v)}
-						className="w-full px-4 sm:px-8 lg:px-12 py-1 border-b border-border flex items-center gap-2 cursor-pointer hover:bg-foreground/5 transition-all duration-300"
-					>
-						<span className="font-mono text-[9px] text-muted-foreground/50 select-none">
-							{showHistory ? "▾" : "▸"}
+					<div className="px-4 sm:px-6 py-1.5 border-b border-border bg-muted/30">
+						<span className="font-mono text-[9px] text-muted-foreground/40 tracking-[1px]">
+							HISTORY — {settled.length} settled
 						</span>
-						<span className="font-mono text-[9px] text-muted-foreground/50 tracking-[0.5px]">
-							HISTORY
-						</span>
-						<span className="font-mono text-[9px] text-muted-foreground/30">
-							{settled.length}
-						</span>
-					</button>
+					</div>
 				)}
-
-				{showHistory && settled.map((pair) => (
-					<PipelineRow key={pair.buyOrder.id} pair={pair} dimmed />
+				{settled.map((pair) => (
+					<PipelineCard key={pair.buyOrder.id} pair={pair} dimmed />
 				))}
 			</div>
 		</div>
 	)
 }
 
-function PipelineRow({ pair, dimmed }: { pair: MatchedPair; dimmed?: boolean }) {
+function PipelineCard({ pair, dimmed }: { pair: MatchedPair; dimmed?: boolean }) {
 	const stageIdx = STAGES.indexOf(pair.stage)
 	const meta = STAGE_META[pair.stage]
 	const now = Date.now()
@@ -131,52 +123,50 @@ function PipelineRow({ pair, dimmed }: { pair: MatchedPair; dimmed?: boolean }) 
 	const duration = endTime - pair.matchedAt
 
 	return (
-		<div className={`px-4 sm:px-8 lg:px-12 py-1.5 flex items-center gap-2 border-b border-border animate-[fade-in_0.3s_ease-out] ${dimmed ? "opacity-40" : ""}`}>
-			{/* Task type */}
-			<span className="font-mono text-[9px] text-muted-foreground tracking-[0.5px] w-12 shrink-0">
-				{TASK_LABELS[pair.buyOrder.taskClass]}
-			</span>
-
-			{/* Timestamp */}
-			<span className="font-mono text-[9px] text-muted-foreground/50 shrink-0 w-14 hidden sm:inline">
-				{formatTime(pair.matchedAt)}
-			</span>
-
-			{/* Intent text */}
-			<span className="hidden md:inline text-[10px] text-foreground/70 truncate min-w-0 flex-shrink w-32 lg:w-48">
-				{pair.buyOrder.intent}
-			</span>
-
-			{/* Buyer → Seller */}
-			<span className="hidden xl:inline font-mono text-[9px] text-bid shrink-0 w-20 truncate">
-				{truncateAddress(pair.buyOrder.buyer)}
-			</span>
-			<span className="hidden xl:inline text-muted-foreground/30 text-[9px] shrink-0">→</span>
-			<span className="hidden xl:inline font-mono text-[9px] text-ask shrink-0 w-20 truncate">
-				{truncateAddress(pair.sellOrder.seller)}
-			</span>
+		<div className={`px-4 sm:px-6 py-2.5 border-b border-border hover:bg-foreground/[0.02] transition-all duration-300 animate-[fade-in_0.3s_ease-out] ${dimmed ? "opacity-35" : ""}`}>
+			{/* Top line: task + intent + time */}
+			<div className="flex items-center gap-2 mb-1.5">
+				<span className={`font-mono text-[9px] font-semibold tracking-[0.5px] px-1.5 py-0.5 rounded-[2px] ${dimmed ? "bg-muted text-muted-foreground" : "bg-foreground/10 text-foreground/70"}`}>
+					{TASK_LABELS[pair.buyOrder.taskClass]}
+				</span>
+				<span className="font-mono text-[11px] text-foreground/80 truncate min-w-0 flex-1">
+					{pair.buyOrder.intent}
+				</span>
+				<span className="font-mono text-[9px] text-muted-foreground/50 shrink-0">
+					{formatTime(pair.matchedAt)}
+				</span>
+			</div>
 
 			{/* Progress bar */}
-			<div className="flex-1 flex items-center gap-0.5 min-w-0">
+			<div className="flex items-center gap-1 mb-1.5">
 				{STAGES.map((stage, i) => (
-					<div
-						key={stage}
-						className={`h-1.5 flex-1 rounded-[2px] transition-all duration-500 ${
-							i <= stageIdx ? STAGE_META[stage].bg : "bg-muted"
-						} ${i === stageIdx ? "opacity-100" : i < stageIdx ? "opacity-30" : "opacity-100"}`}
-					/>
+					<div key={stage} className="flex-1 flex flex-col items-center gap-0.5">
+						<div
+							className={`w-full h-[3px] rounded-full transition-all duration-500 ${
+								i <= stageIdx ? STAGE_META[stage].bg : "bg-muted"
+							} ${i === stageIdx && !dimmed ? "opacity-100" : i < stageIdx ? "opacity-30" : "opacity-100"}`}
+						/>
+					</div>
 				))}
 			</div>
 
-			{/* Stage label */}
-			<span className={`font-mono text-[9px] font-medium tracking-[0.5px] w-12 text-right shrink-0 ${meta.color}`}>
-				{meta.label}
-			</span>
-
-			{/* Duration */}
-			<span className="font-mono text-[9px] text-muted-foreground/40 w-12 text-right shrink-0">
-				{formatDuration(duration)}
-			</span>
+			{/* Bottom line: addresses + stage + duration */}
+			<div className="flex items-center gap-2">
+				<span className="font-mono text-[9px] text-bid/70">
+					{truncateAddress(pair.buyOrder.buyer)}
+				</span>
+				<span className="text-muted-foreground/30 text-[9px]">→</span>
+				<span className="font-mono text-[9px] text-ask/70">
+					{truncateAddress(pair.sellOrder.seller)}
+				</span>
+				<span className="flex-1" />
+				<span className={`font-mono text-[9px] font-semibold tracking-[0.5px] ${meta.color}`}>
+					{meta.label}
+				</span>
+				<span className="font-mono text-[9px] text-muted-foreground/40">
+					{formatDuration(duration)}
+				</span>
+			</div>
 		</div>
 	)
 }

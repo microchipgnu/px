@@ -1,6 +1,5 @@
 import type { ActivityEvent, ActivityEventType } from "@payload-exchange/protocol"
 import { formatPrice, truncateAddress } from "@/lib/format"
-import { useState } from "react"
 
 type Props = {
 	events: ActivityEvent[]
@@ -8,18 +7,18 @@ type Props = {
 
 const EVENT_META: Record<
 	ActivityEventType,
-	{ label: string; color: string }
+	{ label: string; color: string; borderColor: string }
 > = {
-	order_placed: { label: "NEW", color: "text-bid" },
-	order_matched: { label: "MATCH", color: "text-foreground" },
-	execution_started: { label: "EXEC", color: "text-amber-500" },
-	fulfillment_submitted: { label: "DONE", color: "text-blue-400" },
-	attestation_passed: { label: "ATTEST", color: "text-accent" },
-	attestation_failed: { label: "REJECT", color: "text-ask" },
-	settlement_complete: { label: "SETTLE", color: "text-bid" },
-	order_expired: { label: "EXPIRE", color: "text-muted-foreground" },
-	order_cancelled: { label: "CANCEL", color: "text-muted-foreground" },
-	solver_joined: { label: "SOLVER", color: "text-accent" },
+	order_placed: { label: "NEW", color: "text-bid", borderColor: "#0d9488" },
+	order_matched: { label: "MATCH", color: "text-foreground", borderColor: "#e5e5e5" },
+	execution_started: { label: "EXEC", color: "text-amber-500", borderColor: "#f59e0b" },
+	fulfillment_submitted: { label: "DONE", color: "text-blue-400", borderColor: "#60a5fa" },
+	attestation_passed: { label: "ATTEST", color: "text-accent", borderColor: "#22c55e" },
+	attestation_failed: { label: "REJECT", color: "text-ask", borderColor: "#ef4444" },
+	settlement_complete: { label: "SETTLE", color: "text-bid", borderColor: "#0d9488" },
+	order_expired: { label: "EXPIRE", color: "text-muted-foreground", borderColor: "#555" },
+	order_cancelled: { label: "CANCEL", color: "text-muted-foreground", borderColor: "#555" },
+	solver_joined: { label: "SOLVER", color: "text-accent", borderColor: "#22c55e" },
 }
 
 const TASK_LABELS: Record<string, string> = {
@@ -39,7 +38,6 @@ function isTestnet(): boolean {
 }
 
 function txExplorerUrl(txHash: string): string | null {
-	// Only link real tx hashes (not placeholders like "tx:abc123")
 	if (txHash.startsWith("tx:")) return null
 	const base = isTestnet() ? "https://explore.moderato.tempo.xyz" : "https://explore.tempo.xyz"
 	return `${base}/tx/${txHash}`
@@ -48,36 +46,32 @@ function txExplorerUrl(txHash: string): string | null {
 function truncateTxHash(hash: string): string {
 	if (hash.startsWith("tx:")) return hash
 	if (hash.length <= 16) return hash
-	return `${hash.slice(0, 10)}…${hash.slice(-6)}`
+	return `${hash.slice(0, 10)}…${hash.slice(-4)}`
 }
 
 export function ActivityFeed({ events }: Props) {
-	const [open, setOpen] = useState(false)
-
 	return (
-		<div className="flex flex-col bg-background border-t border-border overflow-hidden">
-			<button
-				type="button"
-				onClick={() => setOpen((v) => !v)}
-				className="px-4 sm:px-8 lg:px-12 py-1.5 border-b border-border flex items-center gap-2 shrink-0 bg-card cursor-pointer hover:bg-foreground/5 transition-all duration-300"
-			>
-				<span className="font-mono text-[10px] text-muted-foreground select-none">{open ? "▾" : "▸"}</span>
+		<div className="h-full flex flex-col overflow-hidden">
+			<div className="px-3 py-2 border-b border-border flex items-center gap-2 bg-card/50 shrink-0">
 				<span className="size-1.5 rounded-full bg-accent animate-[pulse-dot_1.5s_ease-in-out_infinite]" />
-				<span className="font-mono text-[10px] font-medium text-muted-foreground tracking-[0.5px]">
-					NETWORK ACTIVITY
+				<span className="font-mono text-[10px] font-semibold text-muted-foreground tracking-[0.5px]">
+					ACTIVITY
 				</span>
-				<span className="ml-auto font-mono text-[10px] text-muted-foreground">
+				<span className="ml-auto font-mono text-[10px] text-muted-foreground/40">
 					{events.length}
 				</span>
-			</button>
+			</div>
 
-			{open && (
-				<div className="overflow-y-auto max-h-44">
-					{events.map((event, i) => (
-						<ActivityRow key={event.id} event={event} isNew={i === 0} />
-					))}
-				</div>
-			)}
+			<div className="flex-1 overflow-y-auto">
+				{events.length === 0 && (
+					<div className="flex items-center justify-center h-20">
+						<span className="font-mono text-[10px] text-muted-foreground/30">NO EVENTS</span>
+					</div>
+				)}
+				{events.map((event, i) => (
+					<ActivityRow key={event.id} event={event} isNew={i === 0} />
+				))}
+			</div>
 		</div>
 	)
 }
@@ -88,47 +82,26 @@ function ActivityRow({ event, isNew }: { event: ActivityEvent; isNew: boolean })
 
 	return (
 		<div
-			className={`flex items-center gap-2 px-4 sm:px-8 lg:px-12 py-1 border-b border-border hover:bg-foreground/5 transition-all duration-300 ${isNew ? "animate-[fade-in_0.3s_ease-out]" : ""}`}
+			className={`flex items-center gap-1.5 px-3 py-1 border-b border-border border-l-2 hover:bg-foreground/[0.02] transition-colors ${isNew ? "animate-[fade-in_0.3s_ease-out]" : ""}`}
+			style={{ borderLeftColor: meta.borderColor }}
 		>
-			<span className="font-mono text-[10px] text-muted-foreground w-7 shrink-0">
+			<span className="font-mono text-[9px] text-muted-foreground/40 w-5 shrink-0">
 				{age < 60 ? `${age}s` : `${Math.floor(age / 60)}m`}
 			</span>
 
-			<span className={`font-mono text-[10px] font-medium tracking-[0.5px] w-12 shrink-0 ${meta.color}`}>
+			<span className={`font-mono text-[9px] font-semibold tracking-[0.5px] w-10 shrink-0 ${meta.color}`}>
 				{meta.label}
 			</span>
 
-			<span className="truncate font-mono text-[10px] min-w-0 flex-1">
-				{event.buyer && (
-					<span className="text-foreground">{truncateAddress(event.buyer)}</span>
-				)}
-				{event.seller && event.buyer && (
-					<span className="text-muted-foreground mx-1">→</span>
-				)}
-				{event.seller && (
-					<span className="text-foreground">{truncateAddress(event.seller)}</span>
-				)}
-				{event.txHash && (
-					<TxHashLink txHash={event.txHash} />
-				)}
-				{event.intent && !event.txHash && (
-					<span className="text-muted-foreground ml-1.5 hidden sm:inline">
-						{event.intent.length > 45 ? `${event.intent.slice(0, 45)}…` : event.intent}
-					</span>
-				)}
-				{!event.intent && !event.txHash && event.detail && (
-					<span className="text-muted-foreground ml-1.5 hidden sm:inline">
-						{event.detail.length > 45 ? `${event.detail.slice(0, 45)}…` : event.detail}
-					</span>
+			<span className="truncate font-mono text-[9px] min-w-0 flex-1 text-muted-foreground/60">
+				{event.txHash && <TxHashLink txHash={event.txHash} />}
+				{!event.txHash && event.orderId && (
+					<span>{event.orderId.slice(0, 8)}</span>
 				)}
 			</span>
 
-			<span className="hidden sm:inline text-right font-mono text-[10px] text-muted-foreground w-12 shrink-0">
+			<span className="font-mono text-[9px] text-muted-foreground/40 shrink-0">
 				{event.price != null ? `$${formatPrice(event.price)}` : ""}
-			</span>
-
-			<span className="hidden sm:inline text-right font-mono text-[9px] text-muted-foreground tracking-[0.5px] w-10 shrink-0">
-				{event.taskClass ? TASK_LABELS[event.taskClass] ?? event.taskClass : ""}
 			</span>
 		</div>
 	)
@@ -136,24 +109,18 @@ function ActivityRow({ event, isNew }: { event: ActivityEvent; isNew: boolean })
 
 function TxHashLink({ txHash }: { txHash: string }) {
 	const url = txExplorerUrl(txHash)
-
 	if (url) {
 		return (
 			<a
 				href={url}
 				target="_blank"
 				rel="noopener noreferrer"
-				className="ml-1.5 text-accent hover:text-accent/80 underline underline-offset-2 decoration-accent/40 hidden sm:inline"
+				className="text-accent/70 hover:text-accent underline underline-offset-2 decoration-accent/30"
 				title={txHash}
 			>
 				{truncateTxHash(txHash)}
 			</a>
 		)
 	}
-
-	return (
-		<span className="ml-1.5 text-muted-foreground hidden sm:inline" title={txHash}>
-			{truncateTxHash(txHash)}
-		</span>
-	)
+	return <span title={txHash}>{truncateTxHash(txHash)}</span>
 }
