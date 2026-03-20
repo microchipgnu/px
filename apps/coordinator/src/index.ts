@@ -29,10 +29,13 @@ app.route("/api/orders", createOrderRoutes(orderbook))
 app.route("/api/fulfillments", createFulfillmentRoutes(orderbook))
 
 app.get("/api/activity", (c) => {
-	const events = [...orderbook.activity.values()]
-		.sort((a, b) => b.timestamp - a.timestamp)
-		.slice(0, 100)
-	return c.json(events)
+	const offset = Number(c.req.query("offset") ?? 0)
+	const limit = Math.min(Number(c.req.query("limit") ?? 50), 100)
+	const all = [...orderbook.activity.values()].sort((a, b) => b.timestamp - a.timestamp)
+	return c.json({
+		events: all.slice(offset, offset + limit),
+		total: all.length,
+	})
 })
 
 app.get("/api/health", (c) =>

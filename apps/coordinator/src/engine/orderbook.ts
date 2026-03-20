@@ -96,7 +96,7 @@ export class Orderbook {
 		return [...this.sellOrders.values()].filter((o) => o.status === "open")
 	}
 
-	snapshot() {
+	snapshot(opts?: { pipelineOffset?: number; pipelineLimit?: number }) {
 		const now = Math.floor(Date.now() / 1000)
 		const allAssignments = [...this.assignments.values()]
 
@@ -125,11 +125,16 @@ export class Orderbook {
 			}
 		}).sort((a, b) => b.createdAt - a.createdAt)
 
+		const offset = opts?.pipelineOffset ?? 0
+		const limit = opts?.pipelineLimit ?? 50
+		const pipelinePage = pipeline.slice(offset, offset + limit)
+
 		return {
 			buyOrders,
 			sellOrders,
 			assignments: allAssignments,
-			pipeline,
+			pipeline: pipelinePage,
+			pipelineTotal: pipeline.length,
 		}
 	}
 

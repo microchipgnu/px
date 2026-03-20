@@ -1,6 +1,7 @@
 import type { BuyOrder, SellOrder } from "@payload-exchange/protocol"
 import { formatPrice, truncateAddress } from "@/lib/format"
-import { useInfiniteScroll } from "@/hooks/useInfiniteScroll"
+import { useLoadMore } from "@/hooks/useInfiniteScroll"
+import { LoadMoreBtn } from "@/components/LoadMoreBtn"
 import { useEffect, useState } from "react"
 
 type MatchedPair = {
@@ -66,7 +67,7 @@ export function Pipeline({ pairs }: Props) {
 
 	const active = pairs.filter((p) => p.stage !== "settled")
 	const allSettled = pairs.filter((p) => p.stage === "settled")
-	const settledScroll = useInfiniteScroll(allSettled, 10)
+	const settledPage = useLoadMore(allSettled, 10)
 
 	const counts: Record<string, number> = {}
 	for (const s of STAGES) counts[s] = 0
@@ -131,10 +132,10 @@ export function Pipeline({ pairs }: Props) {
 						</span>
 					</div>
 				)}
-				{settledScroll.visible.map((pair) => (
+				{settledPage.visible.map((pair) => (
 					<PipelineCard key={pair.buyOrder.id} pair={pair} dimmed onClick={() => setSelected(pair)} />
 				))}
-				{settledScroll.hasMore && <div ref={settledScroll.sentinelRef} className="h-8 flex items-center justify-center"><span className="font-mono text-[8px] text-muted-foreground/20">loading...</span></div>}
+				{settledPage.hasMore && <LoadMoreBtn remaining={settledPage.remaining} onClick={settledPage.loadMore} />}
 			</div>
 
 			{/* Detail modal */}

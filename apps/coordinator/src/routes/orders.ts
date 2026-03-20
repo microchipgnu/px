@@ -183,9 +183,14 @@ export function createOrderRoutes(orderbook: Orderbook) {
 		)
 	})
 
-	// Get full orderbook snapshot
+	// Get orderbook snapshot with optional pipeline pagination
 	app.get("/", (c) => {
-		return c.json(orderbook.snapshot())
+		const offset = Number(c.req.query("offset") ?? 0)
+		const limit = Number(c.req.query("limit") ?? 50)
+		return c.json(orderbook.snapshot({
+			pipelineOffset: offset,
+			pipelineLimit: Math.min(limit, 100),
+		}))
 	})
 
 	return app

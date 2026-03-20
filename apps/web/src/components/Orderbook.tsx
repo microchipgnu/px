@@ -1,6 +1,7 @@
 import type { BuyOrder, SellOrder } from "@payload-exchange/protocol"
 import { formatExpiry, formatPrice, truncateAddress } from "@/lib/format"
-import { useInfiniteScroll } from "@/hooks/useInfiniteScroll"
+import { useLoadMore } from "@/hooks/useInfiniteScroll"
+import { LoadMoreBtn } from "@/components/LoadMoreBtn"
 
 type Props = {
 	buyOrders: BuyOrder[]
@@ -16,8 +17,8 @@ const TASK_LABELS: Record<string, string> = {
 }
 
 export function Orderbook({ buyOrders, sellOrders }: Props) {
-	const bids = useInfiniteScroll(buyOrders, 15)
-	const asks = useInfiniteScroll(sellOrders, 15)
+	const bids = useLoadMore(buyOrders, 15)
+	const asks = useLoadMore(sellOrders, 15)
 
 	return (
 		<div className="h-full flex flex-col overflow-hidden">
@@ -49,7 +50,7 @@ export function Orderbook({ buyOrders, sellOrders }: Props) {
 							</div>
 						</div>
 					))}
-					{bids.hasMore && <div ref={bids.sentinelRef} className="h-8 flex items-center justify-center"><span className="font-mono text-[8px] text-muted-foreground/20">loading...</span></div>}
+					{bids.hasMore && <LoadMoreBtn remaining={bids.remaining} onClick={bids.loadMore} />}
 				</div>
 			</div>
 
@@ -84,7 +85,7 @@ export function Orderbook({ buyOrders, sellOrders }: Props) {
 							</div>
 						</div>
 					))}
-					{asks.hasMore && <div ref={asks.sentinelRef} className="h-8 flex items-center justify-center"><span className="font-mono text-[8px] text-muted-foreground/20">loading...</span></div>}
+					{asks.hasMore && <LoadMoreBtn remaining={asks.remaining} onClick={asks.loadMore} />}
 				</div>
 			</div>
 		</div>

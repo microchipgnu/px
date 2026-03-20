@@ -78,9 +78,11 @@ export function useLiveData(enabled: boolean, baseUrl?: string) {
 
 		const loadHistory = async () => {
 			try {
-				const res = await fetch(httpUrl(baseUrl, "/api/activity"))
+				const res = await fetch(httpUrl(baseUrl, "/api/activity?limit=50"))
 				if (!res.ok) return
-				const events = (await res.json()) as Array<{
+				const body = await res.json()
+				// Support both old (array) and new ({ events, total }) formats
+				const events = (Array.isArray(body) ? body : body.events ?? []) as Array<{
 					id: string
 					event: string
 					data: Record<string, unknown>

@@ -1,6 +1,7 @@
 import type { ActivityEvent, ActivityEventType } from "@payload-exchange/protocol"
 import { formatPrice, truncateAddress } from "@/lib/format"
-import { useInfiniteScroll } from "@/hooks/useInfiniteScroll"
+import { useLoadMore } from "@/hooks/useInfiniteScroll"
+import { LoadMoreBtn } from "@/components/LoadMoreBtn"
 
 type Props = {
 	events: ActivityEvent[]
@@ -51,7 +52,7 @@ function truncateTxHash(hash: string): string {
 }
 
 export function ActivityFeed({ events }: Props) {
-	const { visible, hasMore, sentinelRef } = useInfiniteScroll(events, 20)
+	const { visible, hasMore, remaining, loadMore } = useLoadMore(events, 20)
 
 	return (
 		<div className="h-full flex flex-col overflow-hidden">
@@ -74,7 +75,7 @@ export function ActivityFeed({ events }: Props) {
 				{visible.map((event, i) => (
 					<ActivityRow key={event.id} event={event} isNew={i === 0} />
 				))}
-				{hasMore && <div ref={sentinelRef} className="h-8 flex items-center justify-center"><span className="font-mono text-[8px] text-muted-foreground/20">loading...</span></div>}
+				{hasMore && <LoadMoreBtn remaining={remaining} onClick={loadMore} />}
 			</div>
 		</div>
 	)
