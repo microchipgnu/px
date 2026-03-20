@@ -247,13 +247,33 @@ describe("Orderbook", () => {
 			expect(book.getBuyOrder(fresh.id)!.status).toBe("open")
 		})
 
-		it("does not expire matched orders even if past expiry", () => {
+		it("expires matched orders past their expiry", () => {
 			const matchedPastExpiry = makeBuyOrder({ status: "matched", expiry: now - 100 })
 			book.addBuyOrder(matchedPastExpiry)
 
 			const expired = book.expireStale()
-			expect(expired).toHaveLength(0)
-			expect(book.getBuyOrder(matchedPastExpiry.id)!.status).toBe("matched")
+			expect(expired).toHaveLength(1)
+			expect(book.getBuyOrder(matchedPastExpiry.id)!.status).toBe("expired")
+		})
+
+		it("re-opens stale matched orders within expiry after 2min timeout", () => {
+			const staleMatch = makeBuyOrder({ status: "matched", expiry: now + 3600 })
+			book.addBuyOrder(staleMatch)
+			// Assignment created 3 minutes ago (past the 2min timeout)
+			book.assignments.set(staleMatch.id, {
+				id: crypto.randomUUID(),
+				orderId: staleMatch.id,
+				sellerId: "seller1",
+				sellerOrderId: "sell1",
+				agreedPrice: 0.05,
+				deadline: now + 3600,
+				createdAt: now - 180,
+			})
+
+			const expired = book.expireStale()
+			expect(expired).toHaveLength(1)
+			expect(book.getBuyOrder(staleMatch.id)!.status).toBe("open")
+			expect(book.assignments.get(staleMatch.id)).toBeUndefined()
 		})
 
 		it("returns empty array when nothing to expire", () => {

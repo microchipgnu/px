@@ -88,7 +88,14 @@ const MATCH_INTERVAL = 1000 // 1s
 setInterval(() => {
 	const expired = orderbook.expireStale()
 	for (const id of expired) {
-		emit("order_expired", { orderId: id })
+		const order = orderbook.getBuyOrder(id)
+		if (order?.status === "open") {
+			// Stale match was cleared, order re-opened for matching
+			console.log(`[stale] Order ${id} re-opened after stale match`)
+			emit("order_placed", { orderId: id, buyer: order.buyer, taskClass: order.taskClass, intent: order.intent, maxPrice: order.maxPrice })
+		} else {
+			emit("order_expired", { orderId: id })
+		}
 	}
 
 	const matches = runMatchingCycle(orderbook)

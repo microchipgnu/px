@@ -133,12 +133,34 @@ export class Orderbook {
 		}
 	}
 
-	// Expire overdue buy orders
+	// Expire overdue buy orders + unstick stale matches
 	expireStale(): string[] {
 		const now = Math.floor(Date.now() / 1000)
 		const expired: string[] = []
+		const MATCH_TIMEOUT = 120 // 2 minutes to fulfill after match
+
 		for (const [id, order] of this.buyOrders) {
+			// Expire open orders past their expiry time
 			if (order.status === "open" && order.expiry <= now) {
+				this.buyOrders.set(id, { ...order, status: "expired" })
+				expired.push(id)
+				continue
+			}
+
+			// Unstick matched orders where solver never fulfilled
+			if ((order.status === "matched" || order.status === "executing") && order.expiry > now) {
+				const assignment = this.assignments.get(id)
+				if (assignment && (now - assignment.createdAt) > MATCH_TIMEOUT) {
+					// Remove stale assignment, reopen the order for re-matching
+					this.assignments.delete(id)
+					this.buyOrders.set(id, { ...order, status: "open" })
+					expired.push(id) // signal to emit event
+				}
+			}
+
+			// Expire matched/executing orders past their expiry
+			if ((order.status === "matched" || order.status === "executing") && order.expiry <= now) {
+				this.assignments.delete(id)
 				this.buyOrders.set(id, { ...order, status: "expired" })
 				expired.push(id)
 			}
