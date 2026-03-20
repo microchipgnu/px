@@ -32,6 +32,9 @@ export function App() {
 		sellOrders,
 		stats,
 		activity,
+		activityTotal,
+		activityLoading,
+		loadMoreActivity,
 		matchedPairs,
 		totalMatched,
 		totalVolume,
@@ -123,7 +126,7 @@ export function App() {
 								<DepthChart buyOrders={buyOrders} sellOrders={sellOrders} matchHistory={matchHistory} />
 							</div>
 							<div className="flex-1 min-h-0 overflow-hidden">
-								<ActivityFeed events={activity} />
+								<ActivityFeed events={activity} total={activityTotal} loading={activityLoading} onLoadMore={loadMoreActivity} />
 							</div>
 						</div>
 					</div>
@@ -138,7 +141,7 @@ export function App() {
 									<DepthChart buyOrders={buyOrders} sellOrders={sellOrders} matchHistory={matchHistory} />
 								</div>
 								<div className="flex-1 min-h-0 overflow-hidden">
-									<ActivityFeed events={activity} />
+									<ActivityFeed events={activity} total={activityTotal} loading={activityLoading} onLoadMore={loadMoreActivity} />
 								</div>
 							</div>
 						)}

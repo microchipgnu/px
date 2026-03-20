@@ -1,10 +1,11 @@
 import type { ActivityEvent, ActivityEventType } from "@payload-exchange/protocol"
 import { formatPrice, truncateAddress } from "@/lib/format"
-import { useLoadMore } from "@/hooks/useInfiniteScroll"
-import { LoadMoreBtn } from "@/components/LoadMoreBtn"
 
 type Props = {
 	events: ActivityEvent[]
+	total?: number
+	loading?: boolean
+	onLoadMore?: () => void
 }
 
 const EVENT_META: Record<
@@ -21,17 +22,6 @@ const EVENT_META: Record<
 	order_expired: { label: "EXPIRE", color: "text-muted-foreground", borderColor: "#555" },
 	order_cancelled: { label: "CANCEL", color: "text-muted-foreground", borderColor: "#555" },
 	solver_joined: { label: "SOLVER", color: "text-accent", borderColor: "#22c55e" },
-}
-
-const TASK_LABELS: Record<string, string> = {
-	onchain_swap: "SWAP",
-	bridge: "BRIDGE",
-	yield: "YIELD",
-	price_feed: "FEED",
-	search: "SEARCH",
-	computation: "COMPUTE",
-	monitoring: "MONITOR",
-	smart_contract: "CONTRACT",
 }
 
 function isTestnet(): boolean {
@@ -51,8 +41,8 @@ function truncateTxHash(hash: string): string {
 	return `${hash.slice(0, 10)}…${hash.slice(-4)}`
 }
 
-export function ActivityFeed({ events }: Props) {
-	const { visible, hasMore, remaining, loadMore } = useLoadMore(events, 20)
+export function ActivityFeed({ events, total, loading, onLoadMore }: Props) {
+	const hasMore = total != null && events.length < total
 
 	return (
 		<div className="h-full flex flex-col overflow-hidden">
@@ -62,7 +52,7 @@ export function ActivityFeed({ events }: Props) {
 					ACTIVITY
 				</span>
 				<span className="ml-auto font-mono text-[10px] text-muted-foreground/40">
-					{events.length}
+					{events.length}{total != null && total > events.length ? ` / ${total}` : ""}
 				</span>
 			</div>
 
@@ -72,10 +62,19 @@ export function ActivityFeed({ events }: Props) {
 						<span className="font-mono text-[10px] text-muted-foreground/30">NO EVENTS</span>
 					</div>
 				)}
-				{visible.map((event, i) => (
+				{events.map((event, i) => (
 					<ActivityRow key={event.id} event={event} isNew={i === 0} />
 				))}
-				{hasMore && <LoadMoreBtn remaining={remaining} onClick={loadMore} />}
+				{hasMore && onLoadMore && (
+					<button
+						type="button"
+						onClick={onLoadMore}
+						disabled={loading}
+						className="w-full py-2 font-mono text-[9px] text-muted-foreground/40 hover:text-muted-foreground hover:bg-foreground/[0.03] transition-colors tracking-[0.5px] border-b border-border disabled:opacity-30"
+					>
+						{loading ? "LOADING..." : `LOAD MORE (${total! - events.length})`}
+					</button>
+				)}
 			</div>
 		</div>
 	)

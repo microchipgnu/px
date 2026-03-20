@@ -7,7 +7,7 @@ import type {
 import { useCallback, useEffect, useRef, useState } from "react"
 import type { MatchedPair, MatchTick } from "./useSimulation"
 
-const MAX_ACTIVITY = 50
+const ACTIVITY_PAGE = 50
 const POLL_INTERVAL = 3000
 
 function httpUrl(baseUrl: string | undefined, path: string): string {
@@ -58,18 +58,45 @@ type PipelineEntry = Assignment & {
 	status: string
 }
 
+type RawActivityEvent = {
+	id: string
+	event: string
+	data: Record<string, unknown>
+	timestamp: number
+}
+
+function mapActivityEvent(e: RawActivityEvent): ActivityEvent {
+	return {
+		id: e.id,
+		type: e.event as ActivityEventType,
+		timestamp: Math.floor(e.timestamp / 1000),
+		orderId: e.data.orderId as string | undefined,
+		buyer: e.data.buyer as string | undefined,
+		seller: e.data.seller as string | undefined,
+		taskClass: e.data.taskClass as ActivityEvent["taskClass"],
+		intent: e.data.intent as string | undefined,
+		price: (e.data.agreedPrice ?? e.data.maxPrice ?? e.data.buyerPaid) as number | undefined,
+		txHash: e.data.txHash as string | undefined,
+	}
+}
+
 export function useLiveData(enabled: boolean, baseUrl?: string) {
 	const [buyOrders, setBuyOrders] = useState<BuyOrder[]>([])
 	const [sellOrders, setSellOrders] = useState<SellOrder[]>([])
 	const [activity, setActivity] = useState<ActivityEvent[]>([])
+	const [activityTotal, setActivityTotal] = useState(0)
+	const [activityLoading, setActivityLoading] = useState(false)
 	const [matchedPairs, setMatchedPairs] = useState<MatchedPair[]>([])
 	const [totalMatched, setTotalMatched] = useState(0)
 	const [totalVolume, setTotalVolume] = useState(0)
 	const [matchHistory, setMatchHistory] = useState<MatchTick[]>([])
 	const wsRef = useRef<WebSocket | null>(null)
+	// Track how many were loaded from API (vs pushed by WebSocket)
+	const apiLoadedRef = useRef(0)
 
 	const pushActivity = useCallback((event: ActivityEvent) => {
-		setActivity((prev) => [event, ...prev].slice(0, MAX_ACTIVITY))
+		setActivity((prev) => [event, ...prev])
+		setActivityTotal((t) => t + 1)
 	}, [])
 
 	// Load persisted activity history on mount
@@ -78,31 +105,15 @@ export function useLiveData(enabled: boolean, baseUrl?: string) {
 
 		const loadHistory = async () => {
 			try {
-				const res = await fetch(httpUrl(baseUrl, "/api/activity?limit=50"))
+				const res = await fetch(httpUrl(baseUrl, `/api/activity?limit=${ACTIVITY_PAGE}`))
 				if (!res.ok) return
 				const body = await res.json()
 				// Support both old (array) and new ({ events, total }) formats
-				const events = (Array.isArray(body) ? body : body.events ?? []) as Array<{
-					id: string
-					event: string
-					data: Record<string, unknown>
-					timestamp: number
-				}>
-
-				// Seed activity feed
-				const mapped: ActivityEvent[] = events.map((e) => ({
-					id: e.id,
-					type: e.event as ActivityEventType,
-					timestamp: Math.floor(e.timestamp / 1000),
-					orderId: e.data.orderId as string | undefined,
-					buyer: e.data.buyer as string | undefined,
-					seller: e.data.seller as string | undefined,
-					taskClass: e.data.taskClass as ActivityEvent["taskClass"],
-					intent: e.data.intent as string | undefined,
-					price: (e.data.agreedPrice ?? e.data.maxPrice ?? e.data.buyerPaid) as number | undefined,
-					txHash: e.data.txHash as string | undefined,
-				}))
-				setActivity(mapped.slice(0, MAX_ACTIVITY))
+				const events = (Array.isArray(body) ? body : body.events ?? []) as RawActivityEvent[]
+				const mapped = events.map(mapActivityEvent)
+				setActivity(mapped)
+				apiLoadedRef.current = mapped.length
+				setActivityTotal(body.total ?? mapped.length)
 
 				// Derive counters from history
 				const matches = events.filter((e) => e.event === "order_matched")
@@ -260,10 +271,35 @@ export function useLiveData(enabled: boolean, baseUrl?: string) {
 		}
 	}, [enabled])
 
+	const loadMoreActivity = useCallback(async () => {
+		if (activityLoading) return
+		setActivityLoading(true)
+		try {
+			const offset = apiLoadedRef.current
+			const res = await fetch(httpUrl(baseUrl, `/api/activity?offset=${offset}&limit=${ACTIVITY_PAGE}`))
+			if (!res.ok) return
+			const body = await res.json()
+			const events = (Array.isArray(body) ? body : body.events ?? []) as RawActivityEvent[]
+			const mapped = events.map(mapActivityEvent)
+			if (mapped.length > 0) {
+				setActivity((prev) => [...prev, ...mapped])
+				apiLoadedRef.current += mapped.length
+			}
+			if (body.total != null) setActivityTotal(body.total)
+		} catch {
+			// ignore
+		} finally {
+			setActivityLoading(false)
+		}
+	}, [baseUrl, activityLoading])
+
 	return {
 		buyOrders,
 		sellOrders,
 		activity,
+		activityTotal,
+		activityLoading,
+		loadMoreActivity,
 		matchedPairs,
 		totalMatched,
 		totalVolume,
